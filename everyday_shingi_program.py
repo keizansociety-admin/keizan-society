@@ -8,11 +8,12 @@ PURPOSE:
     and provides a high-readability layout for practitioners.
 
 REVISION HISTORY:
-    2025-01-24: Refactored to support the new structured data dictionary.
-                - Added 'At a Glance' summary display.
-                - Added Ritual Symbol Legend display.
-                - Implemented nested loops for Block/Section/Action hierarchy.
-                - Optimized terminal spacing for dyslexia-friendly reading.
+    2026-06-06: Initial creation of the CLI program.
+    2026-06-06: Refactored for structured data compatibility.
+                - Added support for dictionary-based liturgical items.
+                - Implemented line-by-line rendering for chants.
+                - Added ritual-cue highlighting for terminal use.
+                - Integrated step-numbering into the terminal display.
 
 MAINTAINER:
     Senior Full-Stack Developer / Keizan Society Technical Editor
@@ -23,29 +24,62 @@ import textwrap
 from datetime import datetime, date, timedelta
 from everyday_shingi_schedule import generate_daily_schedule
 
-def print_bullet(text, bullet="- ", indent=4, width=72):
+def print_liturgy(item, indent=6, width=72):
     """
-    Prints text with a hanging indent. 
-    Handles multi-line strings (chants) by preserving their internal line breaks.
+    Prints structured liturgical items (chants/dedications) 
+    line-by-line for ritual pacing.
     """
-    lines = text.split('\n')
-    initial_indent = " " * indent + bullet
-    subsequent_indent = " " * (indent + len(bullet))
+    # Extract data if nested in a 'data' key
+    data = item.get("data", item)
+    lines = data.get("chant_lines", [])
+    label = data.get("label", "Liturgical Text")
     
-    wrapper = textwrap.TextWrapper(
-        width=width, 
-        initial_indent=initial_indent, 
-        subsequent_indent=subsequent_indent,
-        replace_whitespace=False # Preserves our ritual line breaks
-    )
-    
+    print(f"\n{' ' * indent}--- {label} ---")
     for line in lines:
-        if line.strip():
-            print(wrapper.fill(line))
+        # Hanging indent for long lines within a chant
+        wrapper = textwrap.TextWrapper(
+            width=width,
+            initial_indent=" " * (indent + 2),
+            subsequent_indent=" " * (indent + 4)
+        )
+        print(wrapper.fill(line))
+    print(' ' * indent + "-" * (len(label) + 8) + "\n")
+
+def print_action(action, indent=4, width=72):
+    """
+    Prints a single action item, handling both strings and structured dicts.
+    """
+    # 1. Handle Step Numbering
+    prefix = "· "
+    if isinstance(action, dict) and "step" in action:
+        prefix = f"[{action['step']}] "
+
+    # 2. Handle Structured Content
+    if isinstance(action, dict):
+        item_type = action.get("type")
+        
+        # Ritual Cues / Instructions
+        if item_type in ["instruction", "ritual", "transition", "annual"]:
+            content = action.get("content", "")
+            marker = ">>> " if item_type == "ritual" else "[!] "
+            print(f"\n{' ' * indent}{marker}{content.upper()}")
+            
+        # Chants / Dedications
+        elif "chant_lines" in action or "data" in action:
+            print_liturgy(action, indent=indent+2, width=width)
+            
+    # 3. Handle Simple Strings (Verses)
+    else:
+        wrapper = textwrap.TextWrapper(
+            width=width, 
+            initial_indent=" " * indent + prefix, 
+            subsequent_indent=" " * (indent + len(prefix))
+        )
+        print(wrapper.fill(action))
 
 def main():
-    print("\nSoto Zen Lay Practice Planner")
-    print("=" * 30)
+    print("\nKeizan Society · Lay Zen Practice Planner")
+    print("=" * 42)
     user_input = input("Enter date (YYYY-MM-DD) or press [Enter] for today: ").strip()
     
     try:
@@ -58,7 +92,7 @@ def main():
         data = generate_daily_schedule(current_date)
         
         print(f"\n\n{'#'*80}")
-        print(f" LAY ZEN DAILY PRACTICE: {current_date.strftime('%A, %B %d, %Y')}")
+        print(f" SERVICE BOOK: {current_date.strftime('%A, %B %d, %Y')}")
         print(f"{'#'*80}")
 
         # 1. AT A GLANCE SUMMARY
@@ -67,13 +101,7 @@ def main():
         for period, desc in data["summary"].items():
             print(f"  {period.capitalize():<10} : {desc}")
 
-        # 2. RITUAL LEGEND
-        print("\nRITUAL SYMBOLS")
-        print("-" * 20)
-        for sym, desc in data["legend"]:
-            print(f"  {sym}  {desc}")
-
-        # 3. MAIN CONTENT HIERARCHY
+        # 2. MAIN CONTENT HIERARCHY
         for block_name, sections in data["blocks"]:
             print(f"\n\n{block_name.upper()}")
             print("=" * len(block_name))
@@ -83,25 +111,11 @@ def main():
                 print("  " + "-" * len(section_name))
                 
                 if not actions:
-                    print("    (Standard activity)")
+                    print("    (Standard mindful activity)")
                     continue
                 
                 for action in actions:
-                    # Highlight Annual Observances
-                    if action.startswith("ANNUAL OBSERVANCE:"):
-                        print(f"\n    *** {action} ***")
-                    # Highlight specific Ritual Actions
-                    elif action.startswith("ACTION:"):
-                        print_bullet(action, bullet="[!] ", indent=4)
-                    # Standard Actions or Chants
-                    else:
-                        # If it's a long chant (multi-line), give it more space
-                        if "\n" in action:
-                            print("\n")
-                            print_bullet(action, bullet="  ", indent=6)
-                            print("\n")
-                        else:
-                            print_bullet(action, bullet="· ", indent=6)
+                    print_action(action)
 
         print(f"\n\n{'='*80}")
         print(" OPTIONS: [Enter] Tomorrow | [YYYY-MM-DD] Specific Date | [Q] Quit")
