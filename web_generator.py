@@ -3,17 +3,18 @@ WEB_GENERATOR.PY
 Generates a ritual-centered, accessible Markdown post for the Keizan Society.
 
 PURPOSE:
-    Converts the structured schedule data into a production-ready web page.
-    Implements dyslexia-aware typography, semantic HTML5, and a calm, 
-    spacious visual hierarchy.
+    Converts structured schedule data into a production-ready digital service book.
+    Implements dyslexia-aware typography, ritual-action cues, and 
+    progressive disclosure for long liturgical texts.
 
 REVISION HISTORY:
-    2025-01-24: Complete redesign for accessibility and ritual pacing.
-                - Added 'At a Glance' summary card.
-                - Implemented collapsible <details> for long chants.
-                - Added comprehensive CSS for dyslexia support.
-                - Standardized three-level hierarchy (Block > Section > Action).
-                - Added Ritual Symbol Legend.
+    2026-06-06: Initial creation of the web generator.
+    2026-06-06: Graphic redesign for dyslexia-aware ritual use.
+                - Implemented "Service Mode" UI with line-tracking for chants.
+                - Added mobile-first responsive CSS with 20px base font.
+                - Fixed duplicated header/footer logic.
+                - Implemented specific labeling for all collapsible sections.
+                - Added distinct styling for ritual action cues (bells/bows).
 
 MAINTAINER:
     Senior Full-Stack Developer / Keizan Society Technical Editor
@@ -24,168 +25,187 @@ from datetime import date
 from everyday_shingi_schedule import generate_daily_schedule
 
 def generate_css():
-    """Returns the CSS block for the practice page."""
+    """Returns the CSS block optimized for dyslexia and ritual use."""
     return """
 <style>
     :root {
-        --bg: #fdfcf8;        /* Warm off-white */
-        --surface: #f4f1ea;   /* Subtle card background */
-        --text: #2d2d2d;      /* Near-black */
-        --muted: #6b665f;     /* Muted temple-gray */
-        --accent: #4a5d6e;    /* Muted indigo */
+        --bg: #fdfcf8;
+        --surface: #f4f1ea;
+        --text: #2d2d2d;
+        --muted: #6b665f;
+        --accent: #4a5d6e;
         --border: #e0dbd1;
-        --focus: #d4af37;     /* Gold focus state */
+        --focus: #d4af37;
+        --ritual: #856404;
         --max-width: 70ch;
     }
 
+    /* Dyslexia-Aware Typography */
     body {
         background-color: var(--bg);
         color: var(--text);
-        font-family: system-ui, -apple-system, sans-serif;
-        line-height: 1.65;
-        font-size: 1.2rem;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        line-height: 1.7;
+        font-size: 20px; /* Large base for mobile/iPad */
         margin: 0;
-        padding: 2rem 1rem;
-        display: flex;
-        justify-content: center;
+        padding: 0;
+        text-align: left;
     }
 
     .container {
         max-width: var(--max-width);
-        width: 100%;
+        margin: 0 auto;
+        padding: 1.5rem;
     }
 
-    /* Typography */
     h1, h2, h3, h4 {
-        color: var(--text);
-        line-height: 1.2;
-        margin-top: 2.5rem;
+        line-height: 1.3;
+        margin-top: 2rem;
         font-weight: 600;
-    }
-
-    h1 { font-size: 2.5rem; margin-bottom: 0.5rem; }
-    h2 { font-size: 1.8rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; color: var(--accent); }
-    h3 { font-size: 1.4rem; margin-top: 2rem; }
-
-    .site-header {
         text-align: left;
-        margin-bottom: 3rem;
     }
 
-    .site-header p {
-        color: var(--muted);
-        text-transform: uppercase;
-        letter-spacing: 0.1em;
-        font-size: 0.9rem;
-        margin: 0;
-    }
+    h2 { font-size: 1.8rem; color: var(--accent); border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; }
+    h3 { font-size: 1.4rem; margin-top: 1.5rem; }
 
-    /* At a Glance Card */
+    /* Service Mode Components */
     .glance-card {
         background: var(--surface);
-        padding: 1.5rem;
-        border-radius: 8px;
-        margin: 2rem 0;
-        border-left: 4px solid var(--accent);
-    }
-
-    .glance-card h4 { margin-top: 0; font-size: 1rem; text-transform: uppercase; color: var(--muted); }
-    .glance-list { list-style: none; padding: 0; margin: 0; }
-    .glance-list li { margin-bottom: 0.5rem; font-size: 1.1rem; }
-    .glance-label { font-weight: bold; color: var(--accent); width: 100px; display: inline-block; }
-
-    /* Ritual Legend */
-    .legend {
-        font-size: 0.95rem;
-        color: var(--muted);
-        display: flex;
-        gap: 1.5rem;
-        flex-wrap: wrap;
-        margin-bottom: 2rem;
-        padding: 1rem;
-        background: #fff;
-        border: 1px solid var(--border);
-        border-radius: 4px;
-    }
-
-    /* Practice Sections */
-    .time-block { margin-bottom: 4rem; }
-    .practice-section { margin-bottom: 2.5rem; }
-    
-    .action-item { margin-bottom: 1rem; }
-    .ritual-text {
-        white-space: pre-wrap;
-        background: #fff;
         padding: 1.2rem;
-        border-radius: 4px;
-        border: 1px solid var(--border);
+        border-radius: 12px;
+        margin: 1.5rem 0;
+        border-left: 6px solid var(--accent);
+    }
+
+    .glance-list { list-style: none; padding: 0; margin: 0; font-size: 0.9rem; }
+    .glance-label { font-weight: bold; color: var(--accent); display: inline-block; width: 80px; }
+
+    .ritual-cue {
+        background: #fff;
+        border: 2px solid var(--border);
+        border-left: 5px solid var(--focus);
+        padding: 1rem;
         margin: 1rem 0;
-        font-family: inherit;
+        border-radius: 8px;
+        font-weight: 500;
+        color: var(--ritual);
     }
 
-    .status-note {
-        color: var(--muted);
-        font-style: italic;
-        border-left: 2px solid var(--border);
-        padding-left: 1rem;
+    /* Chant Line Viewer */
+    .chant-container {
+        margin: 1.5rem 0;
+        padding-left: 0.5rem;
     }
 
-    /* Collapsible Chants */
+    .chant-line {
+        margin-bottom: 0.75rem;
+        padding: 0.2rem 0.5rem;
+        border-left: 3px solid transparent;
+        transition: background 0.2s;
+    }
+
+    /* Tap-to-highlight support for place-keeping */
+    .chant-line:active, .chant-line:hover {
+        background: #f0ede4;
+        border-left: 3px solid var(--focus);
+    }
+
+    /* Collapsibles */
     details {
         margin: 1rem 0;
-        border: 1px solid var(--border);
-        border-radius: 4px;
+        border: 2px solid var(--border);
+        border-radius: 12px;
         background: #fff;
+        overflow: hidden;
     }
 
     summary {
-        padding: 0.8rem 1.2rem;
+        padding: 1rem;
         cursor: pointer;
         font-weight: bold;
         color: var(--accent);
-        outline: none;
+        list-style: none;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
     }
 
-    summary:focus { box-shadow: 0 0 0 3px var(--focus); }
+    summary::-webkit-details-marker { display: none; }
+    summary::after { content: "＋"; font-size: 1.2rem; }
+    details[open] summary::after { content: "－"; }
+    summary:focus { background: var(--surface); outline: none; }
 
-    .annual-observance {
-        background: #fdf8e4;
-        padding: 1rem;
-        border: 1px solid #e6dbac;
-        border-radius: 4px;
-        margin: 1rem 0;
+    .step-header {
+        display: flex;
+        align-items: baseline;
+        gap: 0.75rem;
     }
 
-    .ritual-action {
-        font-weight: bold;
-        color: #856404;
-    }
-
-    /* Accessibility */
-    .skip-link {
-        position: absolute;
-        top: -40px;
-        left: 0;
+    .step-number {
         background: var(--accent);
-        color: white;
-        padding: 8px;
-        z-index: 100;
+        color: #fff;
+        font-size: 0.9rem;
+        width: 1.8rem;
+        height: 1.8rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        flex-shrink: 0;
     }
-    .skip-link:focus { top: 0; }
 
     @media (max-width: 600px) {
-        body { font-size: 1.1rem; padding: 1rem; }
-        h1 { font-size: 2rem; }
-        .glance-label { display: block; margin-bottom: 0.2rem; }
+        body { font-size: 18px; }
+        .container { padding: 1rem; }
     }
 </style>
 """
 
-def format_as_markdown(target_date, data):
-    """Converts schedule data into a styled HTML/Markdown hybrid."""
+def render_item(item):
+    """Renders a single liturgical or instructional item into HTML."""
+    # Handle simple strings (Verses)
+    if isinstance(item, str):
+        return f'<div class="action-item">{item}</div>'
+
+    # Handle structured dictionaries
+    item_type = item.get("type")
     
-    # Date formatting: Saturday · June 6 · Daily Practice
-    post_title = target_date.strftime('%A · %B %d · Daily Practice')
+    # 1. Ritual Action Cues (Bells, Bows, Instructions)
+    if item_type in ["instruction", "ritual", "transition"]:
+        return f'<div class="ritual-cue">{item.get("content")}</div>'
+
+    # 2. Annual Observance
+    if item_type == "annual":
+        return f'<div class="ritual-cue" style="border-color: var(--accent);"><strong>{item.get("content")}</strong></div>'
+
+    # 3. Chants and Dedications (Collapsible)
+    if "chant_lines" in item or "data" in item:
+        # Extract data if nested
+        data = item.get("data", item)
+        label = data.get("label", "Show Text")
+        title = data.get("title", "")
+        lines = data.get("chant_lines", [])
+        
+        # Build the header
+        header_html = ""
+        if "step" in item:
+            header_html = f'<div class="step-header"><span class="step-number">{item["step"]}</span> <h3>{title or label.replace("Show ", "")}</h3></div>'
+        elif title:
+            header_html = f'<h3>{title}</h3>'
+
+        # Build the collapsible content
+        content_html = '<div class="chant-container">'
+        for line in lines:
+            content_html += f'<div class="chant-line">{line}</div>'
+        content_html += '</div>'
+
+        return f'{header_html}<details><summary>{label}</summary>{content_html}</details>'
+
+    return ""
+
+def format_as_markdown(target_date, data):
+    """Converts schedule data into the final Service Mode Markdown."""
+    post_title = target_date.strftime('%A · %B %d')
     
     md = [
         "---",
@@ -194,16 +214,11 @@ def format_as_markdown(target_date, data):
         "layout: post",
         "---\n",
         generate_css(),
-        '<a class="skip-link" href="#practice-content">Skip to today’s practice</a>',
-        '<header class="site-header">',
-        '    <p>Keizan Society</p>',
-        '    <h1>Daily Home Practice</h1>',
-        '</header>',
-        f'<h2 class="daily-title">{post_title}</h2>',
+        '<div class="container">',
+        f'<h2 class="daily-title">{post_title} · Daily Practice</h2>',
         
-        # At a Glance Card
+        # At a Glance
         '<section class="glance-card">',
-        '    <h4>Today at a Glance</h4>',
         '    <ul class="glance-list">',
         f'        <li><span class="glance-label">Morning</span> {data["summary"]["morning"]}</li>',
         f'        <li><span class="glance-label">Midday</span> {data["summary"]["midday"]}</li>',
@@ -212,12 +227,7 @@ def format_as_markdown(target_date, data):
         '    </ul>',
         '</section>',
 
-        # Legend
-        '<div class="legend">',
-        *[f'<span><strong>{sym}</strong> {desc}</span>' for sym, desc in data["legend"]],
-        '</div>',
-
-        '<main id="practice-content">'
+        '<main id="service-mode">'
     ]
 
     for block_name, sections in data["blocks"]:
@@ -225,47 +235,23 @@ def format_as_markdown(target_date, data):
         md.append(f'  <h2>{block_name}</h2>')
         
         for section_name, actions in sections:
-            md.append(f'  <div class="practice-section">')
-            
-            # Handle Cancelled Services
-            if "Cancelled" in section_name:
-                md.append(f'    <h3 class="status-note">{section_name}</h3>')
-            else:
-                md.append(f'    <h3>{section_name}</h3>')
+            md.append(f'  <article class="practice-section">')
+            md.append(f'    <h3>{section_name}</h3>')
             
             for action in actions:
-                # Annual Observance Styling
-                if action.startswith("ANNUAL OBSERVANCE:"):
-                    md.append(f'    <div class="annual-observance"><strong>{action}</strong></div>')
-                elif action.startswith("ACTION:"):
-                    md.append(f'    <div class="ritual-action">{action}</div>')
-                
-                # Long Chants / Liturgy (Collapsible)
-                elif "\n" in action or len(action) > 200:
-                    # Extract first line or title for the summary
-                    summary_text = "Show Full Text"
-                    if "Maka han-nya" in action: summary_text = "Show Heart Sutra (Sino-Japanese)"
-                    elif "Daihishin" in action: summary_text = "Show Great Compassion Dharani"
-                    elif "Heart of Great" in action: summary_text = "Show Heart Sutra (English)"
-                    elif "Dedication" in action: summary_text = "Show Dedication"
-                    
-                    md.append(f'    <details>')
-                    md.append(f'      <summary>{summary_text}</summary>')
-                    md.append(f'      <div class="ritual-text">{action}</div>')
-                    md.append(f'    </details>')
-                
-                # Standard Action Items
-                else:
-                    md.append(f'    <div class="action-item">{action}</div>')
+                md.append(render_item(action))
             
-            md.append(f'  </div>')
+            md.append(f'  </article>')
         md.append(f'</section>')
 
     md.append('</main>')
-    md.append('<footer style="margin-top: 5rem; color: var(--muted); font-size: 0.9rem; border-top: 1px solid var(--border); padding-top: 2rem;">')
+    
+    # Unified Footer (No duplication)
+    md.append('<footer style="margin-top: 4rem; padding-top: 2rem; border-top: 2px solid var(--border); color: var(--muted); font-size: 0.9rem;">')
     md.append('  <p><em>May this practice benefit all beings throughout the triple world.</em></p>')
-    md.append('  <nav><a href="/archive" style="color: var(--accent); text-decoration: none;">View Past Observances</a></nav>')
+    md.append('  <nav><a href="/" style="color: var(--accent);">Return to Today</a> · <a href="/archive" style="color: var(--accent);">Past Observances</a></nav>')
     md.append('</footer>')
+    md.append('</div>')
     
     return "\n".join(md)
 
@@ -282,7 +268,7 @@ def main():
     with open(file_name, "w", encoding="utf-8") as f:
         f.write(markdown_content)
     
-    print(f"[Success] Generated accessible web post: {file_name}")
+    print(f"[Success] Generated Service Mode post: {file_name}")
 
 if __name__ == "__main__":
     main()
