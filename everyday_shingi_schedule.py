@@ -2,18 +2,10 @@
 EVERYDAY_SHINGI_SCHEDULE.PY
 The logic engine for the Keizan Society.
 
-PURPOSE:
-    Determines the chronological flow of the day, organizing liturgical 
-    content into a three-level hierarchy for web rendering.
-
 REVISION HISTORY:
-    2026-06-06: Initial creation of the logic engine.
-    2026-06-06: Refactored for structured data and ritual-use logic.
-    2026-06-06: BUGFIX: Restored missing Flower Garland Sutra verses.
-    2026-06-06: BUGFIX: Corrected Night Block section order and content.
-
-MAINTAINER:
-    Senior Full-Stack Developer / Keizan Society Technical Editor
+    2026-06-06: Initial creation.
+    2026-06-06: BUGFIX: Corrected Night Block nesting and section order.
+                Purification is now a distinct section preceding Zazen.
 """
 
 import calendar
@@ -39,7 +31,7 @@ def get_uposatha_ceremony():
         {"type": "instruction", "content": "Three Refuges Prayer (Prostrate after each)"},
         CHANTS['three_refuges_prayer'],
         {"type": "ritual", "content": "Closing: 3 Prostrations"},
-        {"type": "liturgy", "content": DEDICATIONS['final_closing']}
+        DEDICATIONS['final_closing']
     ]
 
 def get_weekly_home_service():
@@ -94,33 +86,37 @@ def generate_daily_schedule(target_date):
         morning_sections.append(("Dawn Zazen & Weekly Home Service", m_actions))
     else:
         morning_sections.append(("Dawn Zazen & Morning Service", [
-            {"type": "instruction", "content": "Dawn Zazen"}, VERSES['kesa'], CHANTS['heart_sutra_sino'], DEDICATIONS['morning'], {"type": "ritual", "content": DEDICATIONS['final_closing']}
+            {"type": "instruction", "content": "Dawn Zazen"}, VERSES['kesa'], CHANTS['heart_sutra_sino'], DEDICATIONS['morning'], DEDICATIONS['final_closing']
         ]))
     
     morning_sections.append(("Breakfast", [MEALS['five_contemplations']]))
-    morning_sections.append(("Showering", [VERSES['bathing']]))
+    morning_sections.append(("Showering & Preparation", [VERSES['bathing']]))
     blocks.append(("Morning", morning_sections))
 
     # --- MIDDAY ---
     midday_sections = []
-    if not is_weekend:
+    if is_weekend:
+        midday_sections.append(("Household Work & Family Time", [{"type": "instruction", "content": "Engage in chores or rest as temple work."}]))
+    else:
         midday_sections.append(("Commute & Work", [VERSES['road_start'], VERSES['right_livelihood']]))
         midday_sections.append(("Midday Pause", [DEDICATIONS['midday'], MEALS['five_contemplations']]))
     blocks.append(("Midday", midday_sections))
 
-    # --- EVENING ---
+    # --- AFTERNOON & EVENING ---
     evening_sections = []
-    if not is_weekend and day_of_week != "Friday":
+    if is_weekend or day_of_week == "Friday":
+        evening_sections.append(("Evening Transition", [{"type": "instruction", "content": "Transition to rest and family time."}]))
+    else:
         e_actions = [DEDICATIONS['evening']]
         if day_val == 15 or is_last_day: e_actions.extend(get_uposatha_ceremony())
-        e_actions.append({"type": "ritual", "content": DEDICATIONS['final_closing']})
+        e_actions.append(DEDICATIONS['final_closing'])
         evening_sections.append(("Late Afternoon Zazen & Evening Service", e_actions))
     blocks.append(("Afternoon & Evening", evening_sections))
 
-    # --- NIGHT (FIXED ORDER) ---
+    # --- NIGHT (FIXED NESTING) ---
     night_sections = []
     
-    # 1. Purification FIRST
+    # Section 1: Purification
     p_actions = []
     if annual and annual['step'] == "evening_purification":
         p_actions.append({"type": "annual", "content": f"ANNUAL OBSERVANCE: {annual['name']}"})
@@ -128,7 +124,7 @@ def generate_daily_schedule(target_date):
     p_actions.extend([VERSES['toothbrush'], VERSES['brushing'], VERSES['flossing'], VERSES['rinsing'], VERSES['face']])
     night_sections.append(("Evening Purification", p_actions))
 
-    # 2. Zazen SECOND
+    # Section 2: Zazen
     n_actions = [{"type": "instruction", "content": "Night Zazen"}]
     if day_of_week == "Friday": n_actions.append({"type": "ritual", "content": "HOSAN: " + WEEKEND_RITUALS['hosan_greeting']})
     elif day_of_week == "Sunday": n_actions.append({"type": "ritual", "content": "KAISEI: " + WEEKEND_RITUALS['kaisei_salutation']})
@@ -138,5 +134,5 @@ def generate_daily_schedule(target_date):
     
     blocks.append(("Night", night_sections))
 
-    summary = {"morning": "purification · zazen", "midday": "work practice", "evening": "zazen · service", "night": "purification · vows"}
+    summary = {"morning": "purification · zazen", "midday": "household work", "evening": "rest", "night": "purification · vows"}
     return {"summary": summary, "legend": get_ritual_legend(), "blocks": blocks}
