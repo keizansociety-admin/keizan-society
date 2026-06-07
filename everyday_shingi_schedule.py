@@ -6,6 +6,8 @@ REVISION HISTORY:
     2026-06-06: Initial creation.
     2026-06-06: BUGFIX: Corrected Night Block nesting and section order.
                 Purification is now a distinct section preceding Zazen.
+    2026-06-07: Removed introductory chants (Sutra-Opening, Repentance, Refuges) 
+                from Weekly Home Service to streamline the ritual.
 """
 
 import calendar
@@ -38,17 +40,13 @@ def get_weekly_home_service():
     return [
         {"type": "instruction", "content": "PREPARATION: Light candle and incense."},
         {"type": "ritual", "content": "◎ ◎ Perform gasshō and three full prostrations."},
-        {"step": 1, "data": CHANTS['kaikyo_ge']},
-        {"step": 2, "data": CHANTS['repentance']},
-        {"step": 3, "data": CHANTS['three_refuges_prayer']},
-        {"step": 4, "data": CHANTS['three_refuges_verse']},
-        {"step": 5, "data": CHANTS['heart_sutra_sino']},
-        {"step": 6, "data": DEDICATIONS['weekly_repaying']},
+        {"step": 1, "data": CHANTS['heart_sutra_sino']},
+        {"step": 2, "data": DEDICATIONS['weekly_repaying']},
         {"type": "ritual", "content": DEDICATIONS['universal_closing']},
-        {"step": 7, "data": CHANTS['daihishin_darani']},
-        {"step": 8, "data": DEDICATIONS['weekly_spirits']},
+        {"step": 3, "data": CHANTS['daihishin_darani']},
+        {"step": 4, "data": DEDICATIONS['weekly_spirits']},
         {"type": "ritual", "content": "● ● ● [Make three prostrations]"},
-        {"step": 9, "title": "Service for the Spirit of the Kitchen", "type": "transition", "content": "Move to the Kitchen"},
+        {"step": 5, "title": "Service for the Spirit of the Kitchen", "type": "transition", "content": "Move to the Kitchen"},
         {"type": "chant", "data": CHANTS['heart_sutra_english']},
         {"type": "dedication", "data": DEDICATIONS['stove_god']},
         {"type": "ritual", "content": DEDICATIONS['final_closing']},
@@ -113,7 +111,7 @@ def generate_daily_schedule(target_date):
         evening_sections.append(("Late Afternoon Zazen & Evening Service", e_actions))
     blocks.append(("Afternoon & Evening", evening_sections))
 
-    # --- NIGHT (FIXED NESTING) ---
+    # --- NIGHT ---
     night_sections = []
     
     # Section 1: Purification
