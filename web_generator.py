@@ -7,8 +7,7 @@ REVISION HISTORY:
     2026-06-06: BUGFIX: Explicit UTC-to-Local conversion for rollover.
     2026-06-06: BUGFIX: Merged Step Numbers into Ritual Action Cards to remove redundancy.
     2026-06-07: BUGFIX: Added explicit timezone offset (-04:00) to front matter.
-                This prevents Jekyll (running on UTC) from displaying "tomorrow's" 
-                post before midnight local time.
+    2026-06-07: DESIGN: Changed action-item from span to div to ensure block-level spacing.
 """
 
 import os
@@ -35,10 +34,10 @@ def generate_css():
     h3 { font-size: 1.3rem; margin-top: 2rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
 
     /* Ritual Action Cards */
-    .ritual-cue { background: #fff; border: 2px solid var(--border); border-left: 5px solid var(--focus); padding: 1rem; margin: 1rem 0; border-radius: 8px; color: var(--ritual); font-weight: 500; }
-    .action-item { margin-bottom: 1.2rem; display: block; }
+    .ritual-cue { background: #fff; border: 2px solid var(--border); border-left: 5px solid var(--focus); padding: 1.2rem; margin: 1.5rem 0; border-radius: 8px; color: var(--ritual); font-weight: 500; }
+    .action-item { margin-bottom: 1.5rem; display: block; }
     
-    /* Collapsible Chants (Merged Step + Label) */
+    /* Collapsible Chants */
     details { margin: 1rem 0; border: 2px solid var(--border); border-radius: 12px; background: #fff; }
     summary { padding: 1rem; cursor: pointer; font-weight: bold; color: var(--accent); display: flex; align-items: center; gap: 1rem; }
     summary:focus { outline: none; background: var(--surface); }
@@ -57,7 +56,7 @@ def generate_css():
 
 def render_item(item):
     if isinstance(item, str):
-        return f'<span class="action-item">{item}</span>'
+        return f'<div class="action-item">{item}</div>'
 
     item_type = item.get("type")
     if item_type in ["instruction", "ritual", "transition", "annual"]:
@@ -86,9 +85,6 @@ def render_item(item):
 
 def format_as_markdown(target_date, data):
     post_title = target_date.strftime('%A · %B %d')
-    
-    # Create a full ISO timestamp with the local offset (e.g., 2026-06-06T00:00:00-04:00)
-    # This ensures Jekyll respects the local midnight rollover.
     full_iso_date = datetime.combine(target_date, time.min).replace(tzinfo=LOCAL_OFFSET).isoformat()
 
     md = [
@@ -121,9 +117,7 @@ def format_as_markdown(target_date, data):
     return "\n".join(md)
 
 def main():
-    # Explicitly convert UTC now to Local Timezone before extracting the date
     today = datetime.now(timezone.utc).astimezone(LOCAL_OFFSET).date()
-    
     schedule_data = generate_daily_schedule(today)
     markdown_content = format_as_markdown(today, schedule_data)
     
