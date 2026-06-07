@@ -1,6 +1,6 @@
 ---
 title: "Saturday · June 06"
-date: 2026-06-06
+date: 2026-06-06T00:00:00-04:00
 layout: post
 ---
 
