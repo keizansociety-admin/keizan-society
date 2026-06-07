@@ -39,7 +39,7 @@ title: Keizan Society · Daily Home Practice
             <section class="latest-card">
                 <span class="latest-label">Today's Observances</span>
                 <h2 class="latest-title">{{ post.title }}</h2>
-                <a href="{{ post.url }}" class="start-button">Open Service Book</a>
+                <a href="{{ post.url }}" class="start-button">Begin Daily Practice</a>
             </section>
         {% endfor %}
     </main>
