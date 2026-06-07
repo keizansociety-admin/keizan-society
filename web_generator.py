@@ -6,10 +6,13 @@ REVISION HISTORY:
     2026-06-06: Initial creation.
     2026-06-06: BUGFIX: Explicit UTC-to-Local conversion for rollover.
     2026-06-06: BUGFIX: Merged Step Numbers into Ritual Action Cards to remove redundancy.
+    2026-06-07: BUGFIX: Added explicit timezone offset (-04:00) to front matter.
+                This prevents Jekyll (running on UTC) from displaying "tomorrow's" 
+                post before midnight local time.
 """
 
 import os
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, time
 from everyday_shingi_schedule import generate_daily_schedule
 
 # CONFIGURATION: Set to Eastern Time (UTC-4 for June/Daylight Time)
@@ -66,12 +69,10 @@ def render_item(item):
         title = data.get("title", "")
         lines = data.get("chant_lines", [])
         
-        # Merge Step Number and Label into the Summary
         summary_content = ""
         if "step" in item:
             summary_content += f'<span class="step-badge">{item["step"]}</span> '
         
-        # Use the most descriptive label available
         display_label = title if title else label.replace("Show ", "").replace("Open ", "")
         summary_content += f'<span>{display_label}</span>'
 
@@ -85,10 +86,15 @@ def render_item(item):
 
 def format_as_markdown(target_date, data):
     post_title = target_date.strftime('%A · %B %d')
+    
+    # Create a full ISO timestamp with the local offset (e.g., 2026-06-06T00:00:00-04:00)
+    # This ensures Jekyll respects the local midnight rollover.
+    full_iso_date = datetime.combine(target_date, time.min).replace(tzinfo=LOCAL_OFFSET).isoformat()
+
     md = [
         "---",
         f"title: \"{post_title}\"",
-        f"date: {target_date.isoformat()}",
+        f"date: {full_iso_date}",
         "layout: post",
         "---\n",
         generate_css(),
@@ -115,7 +121,7 @@ def format_as_markdown(target_date, data):
     return "\n".join(md)
 
 def main():
-    # FIX: Explicitly convert UTC now to Local Timezone before extracting the date
+    # Explicitly convert UTC now to Local Timezone before extracting the date
     today = datetime.now(timezone.utc).astimezone(LOCAL_OFFSET).date()
     
     schedule_data = generate_daily_schedule(today)
