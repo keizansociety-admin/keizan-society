@@ -37,7 +37,7 @@ title: Keizan Society · Daily Home Practice
     <main>
         {% for post in site.posts limit:1 %}
             <section class="latest-card">
-                <span class="latest-label">Today's Service</span>
+                <span class="latest-label">Today's Observances</span>
                 <h2 class="latest-title">{{ post.title }}</h2>
                 <a href="{{ post.url }}" class="start-button">Open Service Book</a>
             </section>
