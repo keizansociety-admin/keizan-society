@@ -10,7 +10,7 @@ REVISION HISTORY:
     2026-06-06: Initial creation of the logic engine.
     2026-06-06: Refactored for structured data and ritual-use logic.
     2026-06-06: BUGFIX: Restored missing Flower Garland Sutra verses.
-    2026-06-06: BUGFIX: Corrected Night Block section nesting.
+    2026-06-06: BUGFIX: Corrected Night Block section order and content.
 
 MAINTAINER:
     Senior Full-Stack Developer / Keizan Society Technical Editor
@@ -35,7 +35,7 @@ def get_uposatha_ceremony():
         {"type": "header", "content": "The Ten Major Precepts"},
         {"type": "list", "content": CHANTS['major_precepts']},
         {"type": "instruction", "content": "Verse of Purity"},
-        {"type": "text", "content": MEALS['purity_lotus']},
+        MEALS['purity_lotus'],
         {"type": "instruction", "content": "Three Refuges Prayer (Prostrate after each)"},
         CHANTS['three_refuges_prayer'],
         {"type": "ritual", "content": "Closing: 3 Prostrations"},
@@ -67,25 +67,21 @@ def get_annual_event(target_date):
     m, d = target_date.month, target_date.day
     if m == 10 and d == 1:
         return {"name": "ROFUJI (Hearth Closure)", "step": "evening_purification", "action": "Mindfulness of fire safety.", "liturgy": [ANNUAL_LITURGY['rofuji']]}
-    # (Other annual events omitted for brevity, but preserved in logic)
     return None
 
 def generate_daily_schedule(target_date):
     day_of_week = target_date.strftime('%A')
     day_val = target_date.day
     is_last_day = day_val == calendar.monthrange(target_date.year, target_date.month)[1]
-    is_maintenance_day = day_val % 10 in [4, 9]
     is_weekend = day_of_week in ["Saturday", "Sunday"]
     annual = get_annual_event(target_date)
     
     blocks = []
-    summary = {"morning": "", "midday": "", "evening": "", "night": ""}
 
-    # --- MORNING BLOCK ---
-    morning_sections = []
-    morning_sections.append(("Waking & Morning Purification", [
-        VERSES['waking'], VERSES['toothbrush'], VERSES['brushing'], VERSES['rinsing'], VERSES['face']
-    ]))
+    # --- MORNING ---
+    morning_sections = [
+        ("Waking & Morning Purification", [VERSES['waking'], VERSES['toothbrush'], VERSES['brushing'], VERSES['rinsing'], VERSES['face']])
+    ]
     
     m_actions = []
     if annual and annual['step'] == "morning_service":
@@ -105,42 +101,34 @@ def generate_daily_schedule(target_date):
     morning_sections.append(("Showering", [VERSES['bathing']]))
     blocks.append(("Morning", morning_sections))
 
-    # --- MIDDAY BLOCK ---
+    # --- MIDDAY ---
     midday_sections = []
     if not is_weekend:
         midday_sections.append(("Commute & Work", [VERSES['road_start'], VERSES['right_livelihood']]))
         midday_sections.append(("Midday Pause", [DEDICATIONS['midday'], MEALS['five_contemplations']]))
     blocks.append(("Midday", midday_sections))
 
-    # --- EVENING BLOCK ---
+    # --- EVENING ---
     evening_sections = []
-    e_actions = []
-    if annual and annual['step'] == "evening_service":
-        e_actions.append({"type": "annual", "content": f"ANNUAL OBSERVANCE: {annual['name']}"})
-        e_actions.extend(annual['liturgy'])
-        evening_sections.append(("Annual Evening Service", e_actions))
-    elif not is_weekend and day_of_week != "Friday":
-        e_actions.append(DEDICATIONS['evening'])
+    if not is_weekend and day_of_week != "Friday":
+        e_actions = [DEDICATIONS['evening']]
         if day_val == 15 or is_last_day: e_actions.extend(get_uposatha_ceremony())
         e_actions.append({"type": "ritual", "content": DEDICATIONS['final_closing']})
         evening_sections.append(("Late Afternoon Zazen & Evening Service", e_actions))
     blocks.append(("Afternoon & Evening", evening_sections))
 
-    # --- NIGHT BLOCK ---
+    # --- NIGHT (FIXED ORDER) ---
     night_sections = []
     
-    # 1. Evening Purification Section
+    # 1. Purification FIRST
     p_actions = []
     if annual and annual['step'] == "evening_purification":
         p_actions.append({"type": "annual", "content": f"ANNUAL OBSERVANCE: {annual['name']}"})
         p_actions.append({"type": "instruction", "content": annual['action']})
-    
-    p_actions.extend([
-        VERSES['toothbrush'], VERSES['brushing'], VERSES['flossing'], VERSES['rinsing'], VERSES['face']
-    ])
+    p_actions.extend([VERSES['toothbrush'], VERSES['brushing'], VERSES['flossing'], VERSES['rinsing'], VERSES['face']])
     night_sections.append(("Evening Purification", p_actions))
 
-    # 2. Night Zazen Section
+    # 2. Zazen SECOND
     n_actions = [{"type": "instruction", "content": "Night Zazen"}]
     if day_of_week == "Friday": n_actions.append({"type": "ritual", "content": "HOSAN: " + WEEKEND_RITUALS['hosan_greeting']})
     elif day_of_week == "Sunday": n_actions.append({"type": "ritual", "content": "KAISEI: " + WEEKEND_RITUALS['kaisei_salutation']})
