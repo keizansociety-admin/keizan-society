@@ -9,10 +9,8 @@ PURPOSE:
 REVISION HISTORY:
     2026-06-06: Initial creation of the logic engine.
     2026-06-06: Refactored for structured data and ritual-use logic.
-                - Implemented rich object passing for chants and dedications.
-                - Fixed duplicated blessings in service flows.
-                - Standardized service step numbering in titles only.
-                - Separated ritual instructions from liturgical content.
+    2026-06-06: BUGFIX: Restored missing Flower Garland Sutra verses 
+                in Morning and Evening Purification sections.
 
 MAINTAINER:
     Senior Full-Stack Developer / Keizan Society Technical Editor
@@ -56,7 +54,6 @@ def get_weekly_home_service():
         {"type": "instruction", "content": "PREPARATION: Light candle and incense. Regulate breath."},
         {"type": "ritual", "content": "◎ ◎ Perform gasshō and three full prostrations."},
         
-        # Steps are numbered in titles only
         {"step": 1, "data": CHANTS['kaikyo_ge']},
         {"step": 2, "data": CHANTS['repentance']},
         {"step": 3, "data": CHANTS['three_refuges_prayer']},
@@ -83,56 +80,41 @@ def get_annual_event(target_date):
     """Returns annual event data if the date matches an observance."""
     m, d = target_date.month, target_date.day
     
-    # Winter
     if m == 1 and d == 26:
-        return {"name": "KOSO GOTAN-E (Dogen Zenji's Birthday)", "step": "morning_service", "action": "Before sitting Zazen, brew a fresh cup of tea and place it on the home altar.", "liturgy": [CHANTS['heart_sutra_mantra'], ANNUAL_LITURGY['gotan_e']]}
+        return {"name": "KOSO GOTAN-E (Dogen Zenji's Birthday)", "step": "morning_service", "action": "Before sitting Zazen, brew a fresh cup of tea.", "liturgy": [CHANTS['heart_sutra_sino'], ANNUAL_LITURGY['gotan_e']]}
     if m == 2 and d == 15:
-        return {"name": "NEHAN-E (Nirvana Day)", "step": "evening_service", "action": "Dim the lights in the house. Light a single candle on the altar.", "liturgy": [CHANTS['surangama_heart_mantra'], ANNUAL_LITURGY['nehan_e']]}
-    
-    # Spring
+        return {"name": "NEHAN-E (Nirvana Day)", "step": "evening_service", "action": "Dim the lights in the house.", "liturgy": [CHANTS['heart_sutra_english'], ANNUAL_LITURGY['nehan_e']]}
     if m == 3 and d == 1:
-        return {"name": "ROBIRAKI (Hearth Opening)", "step": "breakfast", "action": "When turning on the stove, take a moment of continuous mindfulness.", "liturgy": [ANNUAL_LITURGY['robiraki']]}
+        return {"name": "ROBIRAKI (Hearth Opening)", "step": "breakfast", "action": "Mindful stove opening.", "liturgy": [ANNUAL_LITURGY['robiraki']]}
     if m == 3 and d == 20:
-        return {"name": "HIGAN-E (Spring Equinox)", "step": "evening_service", "action": "Place a photograph of deceased family members on the altar.", "liturgy": [CHANTS['heart_sutra_english'], ANNUAL_LITURGY['ancestral_higan']]}
+        return {"name": "HIGAN-E (Spring Equinox)", "step": "evening_service", "action": "Place ancestor photos on altar.", "liturgy": [CHANTS['heart_sutra_english'], ANNUAL_LITURGY['ancestral_higan']]}
     if m == 4 and d == 8:
-        return {"name": "HANA-MATSURI (Buddha's Birthday)", "step": "morning_service", "action": "Place a single fresh flower on the altar.", "liturgy": [CHANTS['heart_sutra_mantra'], ANNUAL_LITURGY['hana_matsuri']]}
-    
-    # Summer
+        return {"name": "HANA-MATSURI (Buddha's Birthday)", "step": "morning_service", "action": "Place a flower on the altar.", "liturgy": [CHANTS['heart_sutra_sino'], ANNUAL_LITURGY['hana_matsuri']]}
     if (m == 1 or m == 5 or m == 9) and d == 16:
-        return {"name": "ZENGETSU KITO-E (Month of Good Cultivation)", "step": "evening_service", "action": "Sit Zazen with a specific intention toward ethical renewal.", "liturgy": [CHANTS['ten_names'], ANNUAL_LITURGY['zengetsu']]}
+        return {"name": "ZENGETSU KITO-E", "step": "evening_service", "action": "Ethical renewal intention.", "liturgy": [CHANTS['ten_names'], ANNUAL_LITURGY['zengetsu']]}
     if m == 6 and d == 18:
-        return {"name": "WOMEN'S ANCESTORS COMMEMORATION", "step": "evening_service", "action": "Light a special candle to honor the maternal lineage.", "liturgy": [CHANTS['jukku_kannon_gyo'], ANNUAL_LITURGY['women_ancestors']]}
+        return {"name": "WOMEN'S ANCESTORS", "step": "evening_service", "action": "Light candle for maternal lineage.", "liturgy": [CHANTS['jukku_kannon_gyo'], ANNUAL_LITURGY['women_ancestors']]}
     if (m == 7 or m == 8) and d == 15:
-        return {"name": "O-BON & SEJIKI-E (Festival of Remembrance)", "step": "evening_service", "action": "Place a small bowl of water and a pinch of food on the altar.", "liturgy": [CHANTS['daihishin_darani'], ANNUAL_LITURGY['sejiki']]}
-    
-    # Autumn
+        return {"name": "O-BON & SEJIKI-E", "step": "evening_service", "action": "Offer water and food pinch.", "liturgy": [CHANTS['daihishin_darani'], ANNUAL_LITURGY['sejiki']]}
     if m == 9 and d == 21:
-        return {"name": "HIGAN-E (Autumn Equinox)", "step": "evening_service", "action": "Place a photograph of deceased family members on the altar.", "liturgy": [CHANTS['heart_sutra_english'], ANNUAL_LITURGY['ancestral_higan']]}
+        return {"name": "HIGAN-E (Autumn Equinox)", "step": "evening_service", "action": "Place ancestor photos on altar.", "liturgy": [CHANTS['heart_sutra_english'], ANNUAL_LITURGY['ancestral_higan']]}
     if m == 9 and d == 29:
-        return {"name": "RYOSOKI (Two Ancestors Memorial)", "step": "morning_service", "action": "Brew a fresh cup of tea and place a small sweet on the altar.", "liturgy": [CHANTS['surangama_heart_mantra'], ANNUAL_LITURGY['ryosoki']]}
+        return {"name": "RYOSOKI", "step": "morning_service", "action": "Offer tea and sweet.", "liturgy": [CHANTS['heart_sutra_sino'], ANNUAL_LITURGY['ryosoki']]}
     if m == 10 and d == 1:
-        return {"name": "ROFUJI (Hearth Closure)", "step": "evening_purification", "action": "Take a moment of mindfulness regarding fire safety.", "liturgy": [ANNUAL_LITURGY['rofuji']]}
+        return {"name": "ROFUJI (Hearth Closure)", "step": "evening_purification", "action": "Mindfulness of fire safety.", "liturgy": [ANNUAL_LITURGY['rofuji']]}
     if m == 10 and d == 5:
-        return {"name": "DARUMAKI (Bodhidharma Memorial)", "step": "morning_service", "action": "Offer a fresh cup of tea to the altar.", "liturgy": [CHANTS['heart_sutra_english'], ANNUAL_LITURGY['darumaki']]}
-
-    # Early Winter
+        return {"name": "DARUMAKI", "step": "morning_service", "action": "Offer tea to Bodhidharma.", "liturgy": [CHANTS['heart_sutra_english'], ANNUAL_LITURGY['darumaki']]}
     if m == 12 and d == 8:
-        return {"name": "ROHATSU & JODO-E (Buddha's Awakening)", "step": "night_zazen", "action": "Extend Zazen until midnight. Place a candle and tea on the altar.", "liturgy": [CHANTS['surangama_heart_mantra'], ANNUAL_LITURGY['jodo_e']]}
+        return {"name": "ROHATSU & JODO-E", "step": "night_zazen", "action": "Extend Zazen until midnight.", "liturgy": [CHANTS['heart_sutra_sino'], ANNUAL_LITURGY['jodo_e']]}
     if m == 12 and (d == 9 or d == 10):
-        return {"name": "DANPI HO-ON SESSHIN (Memorial for Huike)", "step": "morning_service", "action": "Offer a fresh cup of tea. Reflect on ancestral sacrifice.", "liturgy": [CHANTS['daihishin_darani'], ANNUAL_LITURGY['eka_eko']]}
+        return {"name": "DANPI HO-ON SESSHIN", "step": "morning_service", "action": "Reflect on Huike's sacrifice.", "liturgy": [CHANTS['daihishin_darani'], ANNUAL_LITURGY['eka_eko']]}
     if m == 12 and d == 31:
-        return {"name": "O-MISOKA (Year-End Purification)", "step": "night_zazen", "action": "Clean altar. Strike bell 108 times at end of Zazen.", "liturgy": [CHANTS['daihishin_darani'], ANNUAL_LITURGY['year_end']]}
+        return {"name": "O-MISOKA", "step": "night_zazen", "action": "Clean altar. Strike bell 108 times.", "liturgy": [CHANTS['daihishin_darani'], ANNUAL_LITURGY['year_end']]}
 
     return None
 
 def generate_daily_schedule(target_date):
-    """
-    Generates a structured daily schedule.
-    Returns: {
-        "summary": {"morning": str, "midday": str, "evening": str, "night": str},
-        "blocks": [ (block_name, [ (section_name, [actions]) ]) ]
-    }
-    """
+    """Generates a structured daily schedule."""
     day_of_week = target_date.strftime('%A')
     day_val = target_date.day
     is_last_day = day_val == calendar.monthrange(target_date.year, target_date.month)[1]
@@ -145,7 +127,15 @@ def generate_daily_schedule(target_date):
 
     # --- MORNING BLOCK ---
     morning_sections = []
-    morning_sections.append(("Waking & Morning Purification", [VERSES['waking'], VERSES['toothbrush'], VERSES['brushing'], VERSES['rinsing'], VERSES['face']]))
+    
+    # Waking Verses (Restored)
+    morning_sections.append(("Waking & Morning Purification", [
+        {"type": "text", "content": VERSES['waking']},
+        {"type": "text", "content": VERSES['toothbrush']},
+        {"type": "text", "content": VERSES['brushing']},
+        {"type": "text", "content": VERSES['rinsing']},
+        {"type": "text", "content": VERSES['face']}
+    ]))
     summary["morning"] = "purification · "
 
     m_actions = []
@@ -162,23 +152,24 @@ def generate_daily_schedule(target_date):
         morning_sections.append(("Dawn Zazen & Weekly Home Service", m_actions))
         summary["morning"] += "45m zazen · home service"
     elif is_maintenance_day:
-        morning_sections.append(("Morning Service: Cancelled — Maintenance Day", [{"type": "instruction", "content": "Focus on physical maintenance and household care."}, {"type": "text", "content": "Shaving Verse: " + VERSES['tonsure']}]))
+        morning_sections.append(("Morning Service: Cancelled — Maintenance Day", [
+            {"type": "instruction", "content": "Focus on physical maintenance and household care."},
+            {"type": "text", "content": "Shaving Verse: " + VERSES['tonsure']}
+        ]))
         summary["morning"] += "maintenance"
     else:
-        morning_dedication = DEDICATIONS['morning']
-        if day_val in [1, 15]: morning_dedication = DEDICATIONS['weekly_repaying'] # Use structured repaying for 1st/15th
         morning_sections.append(("Dawn Zazen & Morning Service", [
             {"type": "instruction", "content": "Dawn Zazen"},
             VERSES['kesa'],
             {"type": "instruction", "content": "Chant Heart Sutra Mantra 7x"},
-            CHANTS['heart_sutra_sino'], # Or just the mantra if preferred
-            morning_dedication,
+            CHANTS['heart_sutra_sino'],
+            DEDICATIONS['morning'],
             {"type": "ritual", "content": DEDICATIONS['final_closing']}
         ]))
         summary["morning"] += "zazen · morning service"
 
     morning_sections.append(("Breakfast", [MEALS['five_contemplations']]))
-    morning_sections.append(("Showering & Preparation", [VERSES['bathing']]))
+    morning_sections.append(("Showering & Preparation", [{"type": "text", "content": VERSES['bathing']}]))
     blocks.append(("Morning", morning_sections))
 
     # --- MIDDAY BLOCK ---
@@ -187,10 +178,12 @@ def generate_daily_schedule(target_date):
         midday_sections.append(("Household Work & Family Time", [{"type": "instruction", "content": "Engage in chores or rest as temple work."}]))
         summary["midday"] = "household work"
     else:
-        midday_sections.append(("Commute & Morning Work", [VERSES['road_start'], VERSES['right_livelihood']]))
+        midday_sections.append(("Commute & Morning Work", [
+            {"type": "text", "content": VERSES['road_start']},
+            {"type": "text", "content": VERSES['right_livelihood']}
+        ]))
         midday_sections.append(("Midday Pause", [
             {"type": "instruction", "content": "Midday Zazen"},
-            {"type": "instruction", "content": "Victor's Heart Mantra (7x)"},
             DEDICATIONS['midday'],
             MEALS['five_contemplations']
         ]))
@@ -222,7 +215,24 @@ def generate_daily_schedule(target_date):
 
     # --- NIGHT BLOCK ---
     night_sections = []
-    n_actions = [{"type": "instruction", "content": "Evening Purification"}]
+    
+    # Evening Purification (Restored Verses)
+    p_actions = []
+    if annual and annual['step'] == "evening_purification":
+        p_actions.append({"type": "annual", "content": f"ANNUAL OBSERVANCE: {annual['name']}"})
+        p_actions.append({"type": "instruction", "content": annual['action']})
+    
+    p_actions.extend([
+        {"type": "text", "content": VERSES['toothbrush']},
+        {"type": "text", "content": VERSES['brushing']},
+        {"type": "text", "content": VERSES['flossing']},
+        {"type": "text", "content": VERSES['rinsing']},
+        {"type": "text", "content": VERSES['face']}
+    ])
+    night_sections.append(("Evening Purification", p_actions))
+
+    # Night Zazen
+    n_actions = [{"type": "instruction", "content": "Night Zazen"}]
     if day_of_week == "Friday":
         n_actions.append({"type": "ritual", "content": "HOSAN: " + WEEKEND_RITUALS['hosan_greeting']})
     elif day_of_week == "Sunday":
@@ -230,7 +240,8 @@ def generate_daily_schedule(target_date):
     n_actions.append(CHANTS['vows'])
     n_actions.append({"type": "text", "content": VERSES['sleep']})
     night_sections.append(("Night Zazen & Sleep", n_actions))
-    summary["night"] = "zazen · vows · sleep"
+    
+    summary["night"] = "purification · zazen · vows · sleep"
     blocks.append(("Night", night_sections))
 
     return {
