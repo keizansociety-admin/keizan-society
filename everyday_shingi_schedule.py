@@ -5,9 +5,9 @@ The logic engine for the Keizan Society.
 REVISION HISTORY:
     2026-06-06: Initial creation.
     2026-06-06: BUGFIX: Corrected Night Block nesting and section order.
-                Purification is now a distinct section preceding Zazen.
-    2026-06-07: Removed introductory chants (Sutra-Opening, Repentance, Refuges) 
-                from Weekly Home Service to streamline the ritual.
+    2026-06-07: Removed introductory chants from Weekly Home Service.
+    2026-06-07: DESIGN: Wrapped purification verses in 'instruction' type 
+                to ensure they render as Ritual Action Cards with proper spacing.
 """
 
 import calendar
@@ -69,8 +69,17 @@ def generate_daily_schedule(target_date):
     blocks = []
 
     # --- MORNING ---
+    # Convert purification verses to ritual instructions for better spacing/cards
+    purification_actions = [
+        {"type": "instruction", "content": VERSES['waking']},
+        {"type": "instruction", "content": VERSES['toothbrush']},
+        {"type": "instruction", "content": VERSES['brushing']},
+        {"type": "instruction", "content": VERSES['rinsing']},
+        {"type": "instruction", "content": VERSES['face']}
+    ]
+    
     morning_sections = [
-        ("Waking & Morning Purification", [VERSES['waking'], VERSES['toothbrush'], VERSES['brushing'], VERSES['rinsing'], VERSES['face']])
+        ("Waking & Morning Purification", purification_actions)
     ]
     
     m_actions = []
@@ -88,7 +97,7 @@ def generate_daily_schedule(target_date):
         ]))
     
     morning_sections.append(("Breakfast", [MEALS['five_contemplations']]))
-    morning_sections.append(("Showering & Preparation", [VERSES['bathing']]))
+    morning_sections.append(("Showering & Preparation", [{"type": "instruction", "content": VERSES['bathing']}]))
     blocks.append(("Morning", morning_sections))
 
     # --- MIDDAY ---
@@ -96,7 +105,7 @@ def generate_daily_schedule(target_date):
     if is_weekend:
         midday_sections.append(("Household Work & Family Time", [{"type": "instruction", "content": "Engage in chores or rest as temple work."}]))
     else:
-        midday_sections.append(("Commute & Work", [VERSES['road_start'], VERSES['right_livelihood']]))
+        midday_sections.append(("Commute & Work", [{"type": "instruction", "content": VERSES['road_start']}, {"type": "instruction", "content": VERSES['right_livelihood']}]))
         midday_sections.append(("Midday Pause", [DEDICATIONS['midday'], MEALS['five_contemplations']]))
     blocks.append(("Midday", midday_sections))
 
@@ -114,20 +123,25 @@ def generate_daily_schedule(target_date):
     # --- NIGHT ---
     night_sections = []
     
-    # Section 1: Purification
     p_actions = []
     if annual and annual['step'] == "evening_purification":
         p_actions.append({"type": "annual", "content": f"ANNUAL OBSERVANCE: {annual['name']}"})
         p_actions.append({"type": "instruction", "content": annual['action']})
-    p_actions.extend([VERSES['toothbrush'], VERSES['brushing'], VERSES['flossing'], VERSES['rinsing'], VERSES['face']])
+    
+    p_actions.extend([
+        {"type": "instruction", "content": VERSES['toothbrush']},
+        {"type": "instruction", "content": VERSES['brushing']},
+        {"type": "instruction", "content": VERSES['flossing']},
+        {"type": "instruction", "content": VERSES['rinsing']},
+        {"type": "instruction", "content": VERSES['face']}
+    ])
     night_sections.append(("Evening Purification", p_actions))
 
-    # Section 2: Zazen
     n_actions = [{"type": "instruction", "content": "Night Zazen"}]
     if day_of_week == "Friday": n_actions.append({"type": "ritual", "content": "HOSAN: " + WEEKEND_RITUALS['hosan_greeting']})
     elif day_of_week == "Sunday": n_actions.append({"type": "ritual", "content": "KAISEI: " + WEEKEND_RITUALS['kaisei_salutation']})
     n_actions.append(CHANTS['vows'])
-    n_actions.append(VERSES['sleep'])
+    n_actions.append({"type": "instruction", "content": VERSES['sleep']})
     night_sections.append(("Night Zazen & Sleep", n_actions))
     
     blocks.append(("Night", night_sections))
