@@ -20,10 +20,10 @@ layout: post
     h3 { font-size: 1.3rem; margin-top: 2rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
 
     /* Ritual Action Cards */
-    .ritual-cue { background: #fff; border: 2px solid var(--border); border-left: 5px solid var(--focus); padding: 1rem; margin: 1rem 0; border-radius: 8px; color: var(--ritual); font-weight: 500; }
-    .action-item { margin-bottom: 1.2rem; display: block; }
+    .ritual-cue { background: #fff; border: 2px solid var(--border); border-left: 5px solid var(--focus); padding: 1.2rem; margin: 1.5rem 0; border-radius: 8px; color: var(--ritual); font-weight: 500; }
+    .action-item { margin-bottom: 1.5rem; display: block; }
     
-    /* Collapsible Chants (Merged Step + Label) */
+    /* Collapsible Chants */
     details { margin: 1rem 0; border: 2px solid var(--border); border-radius: 12px; background: #fff; }
     summary { padding: 1rem; cursor: pointer; font-weight: bold; color: var(--accent); display: flex; align-items: center; gap: 1rem; }
     summary:focus { outline: none; background: var(--surface); }
@@ -49,11 +49,11 @@ layout: post
 <main>
 <section><h2>Morning</h2>
 <article><h3>Waking & Morning Purification</h3>
-<span class="action-item">Waking from sleep, the Bodhisattva inspires all beings to awaken to All-Knowledge, gazing upon the ten directions.</span>
-<span class="action-item">Taking a toothbrush in hand, the Bodhisattva inspires all beings to attain the wonderful teaching and be ultimately pure.</span>
-<span class="action-item">Brushing the teeth, the Bodhisattva inspires all beings to be harmonious and pure in mind, biting through all afflictions.</span>
-<span class="action-item">Rinsing the mouth, the Bodhisattva inspires all beings to approach the Gate of the Pure Dharma and accomplish liberation.</span>
-<span class="action-item">Using water to wash the face, the Bodhisattva inspires all beings to obtain the Gate of the Pure Dharma, forever without stain.</span>
+<div class="ritual-cue">Waking from sleep, the Bodhisattva inspires all beings to awaken to All-Knowledge, gazing upon the ten directions.</div>
+<div class="ritual-cue">Taking a toothbrush in hand, the Bodhisattva inspires all beings to attain the wonderful teaching and be ultimately pure.</div>
+<div class="ritual-cue">Brushing the teeth, the Bodhisattva inspires all beings to be harmonious and pure in mind, biting through all afflictions.</div>
+<div class="ritual-cue">Rinsing the mouth, the Bodhisattva inspires all beings to approach the Gate of the Pure Dharma and accomplish liberation.</div>
+<div class="ritual-cue">Using water to wash the face, the Bodhisattva inspires all beings to obtain the Gate of the Pure Dharma, forever without stain.</div>
 </article>
 <article><h3>Dawn Zazen & Weekly Home Service</h3>
 <div class="ritual-cue">Extended 45-minute Dawn Zazen</div>
@@ -75,7 +75,7 @@ layout: post
 <details><summary><span>The Five Contemplations</span></summary><div class="chant-container" style="padding: 1rem; border-top: 1px solid var(--border);"><div class="chant-line">1. We reflect on the effort that brought us this food and consider how it comes to us.</div><div class="chant-line">2. We reflect on our virtue and practice, and whether we are worthy of this offering.</div><div class="chant-line">3. We regard greed as the obstacle to freedom of mind.</div><div class="chant-line">4. We regard this meal as medicine to sustain our life.</div><div class="chant-line">5. For the sake of enlightenment we now receive this food.</div></div></details>
 </article>
 <article><h3>Showering & Preparation</h3>
-<span class="action-item">Bathing the body, the Bodhisattva inspires all beings to have hearts and bodies without defilement, pure and bright inside and out.</span>
+<div class="ritual-cue">Bathing the body, the Bodhisattva inspires all beings to have hearts and bodies without defilement, pure and bright inside and out.</div>
 </article>
 </section>
 <section><h2>Midday</h2>
@@ -90,16 +90,16 @@ layout: post
 </section>
 <section><h2>Night</h2>
 <article><h3>Evening Purification</h3>
-<span class="action-item">Taking a toothbrush in hand, the Bodhisattva inspires all beings to attain the wonderful teaching and be ultimately pure.</span>
-<span class="action-item">Brushing the teeth, the Bodhisattva inspires all beings to be harmonious and pure in mind, biting through all afflictions.</span>
-<span class="action-item">Flossing the teeth, The Bodhisattva inspires all beings to draw out the hair’s breadth Between heaven and earth.</span>
-<span class="action-item">Rinsing the mouth, the Bodhisattva inspires all beings to approach the Gate of the Pure Dharma and accomplish liberation.</span>
-<span class="action-item">Using water to wash the face, the Bodhisattva inspires all beings to obtain the Gate of the Pure Dharma, forever without stain.</span>
+<div class="ritual-cue">Taking a toothbrush in hand, the Bodhisattva inspires all beings to attain the wonderful teaching and be ultimately pure.</div>
+<div class="ritual-cue">Brushing the teeth, the Bodhisattva inspires all beings to be harmonious and pure in mind, biting through all afflictions.</div>
+<div class="ritual-cue">Flossing the teeth, The Bodhisattva inspires all beings to draw out the hair’s breadth Between heaven and earth.</div>
+<div class="ritual-cue">Rinsing the mouth, the Bodhisattva inspires all beings to approach the Gate of the Pure Dharma and accomplish liberation.</div>
+<div class="ritual-cue">Using water to wash the face, the Bodhisattva inspires all beings to obtain the Gate of the Pure Dharma, forever without stain.</div>
 </article>
 <article><h3>Night Zazen & Sleep</h3>
 <div class="ritual-cue">Night Zazen</div>
 <details><summary><span>The Four Great Vows</span></summary><div class="chant-container" style="padding: 1rem; border-top: 1px solid var(--border);"><div class="chant-line">1. Beings are numberless; I vow to free them.</div><div class="chant-line">2. Delusions are inexhaustible; I vow to end them.</div><div class="chant-line">3. Dharma gates are boundless; I vow to enter them.</div><div class="chant-line">4. The buddha way is unsurpassable; I vow to realize it.</div></div></details>
-<span class="action-item">Going to sleep, the Bodhisattva inspires all beings to have bodies that attain peace and hearts without disturbance.</span>
+<div class="ritual-cue">Going to sleep, the Bodhisattva inspires all beings to have bodies that attain peace and hearts without disturbance.</div>
 </article>
 </section>
 </main><footer style="margin-top: 5rem; color: var(--muted); font-style: italic; border-top: 1px solid var(--border); padding-top: 2rem;">May this practice benefit all beings throughout the triple world.</footer></div>
