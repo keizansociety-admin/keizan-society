@@ -56,8 +56,4 @@ title: Keizan Society · Daily Home Practice
         </ul>
     </section>
 
-    <footer>
-        May this practice benefit all beings throughout the triple world.
-    </footer>
-
 </div>
