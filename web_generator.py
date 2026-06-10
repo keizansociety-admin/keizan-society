@@ -1,130 +1,126 @@
-"""
-WEB_GENERATOR.PY
-Generates a ritual-centered, accessible Markdown post for the Keizan Society.
-
-REVISION HISTORY:
-    2026-06-06: Initial creation.
-    2026-06-06: BUGFIX: Explicit UTC-to-Local conversion for rollover.
-    2026-06-06: BUGFIX: Merged Step Numbers into Ritual Action Cards to remove redundancy.
-    2026-06-07: BUGFIX: Added explicit timezone offset (-04:00) to front matter.
-    2026-06-07: DESIGN: Changed action-item from span to div to ensure block-level spacing.
-"""
-
 import os
-from datetime import datetime, timedelta, timezone, time
-from everyday_shingi_schedule import generate_daily_schedule
+import yaml
+import pytz
+import calendar
+import re
+from datetime import datetime
 
-# CONFIGURATION: Set to Eastern Time (UTC-4 for June/Daylight Time)
-LOCAL_OFFSET = timezone(timedelta(hours=-4))
+# --- GITHUB CONFIGURATION ---
+TIMEZONE = "America/New_York"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-def generate_css():
-    return """
-<style>
-    :root {
-        --bg: #fdfcf8; --surface: #f4f1ea; --text: #2d2d2d; --muted: #6b665f;
-        --accent: #4a5d6e; --border: #e0dbd1; --focus: #d4af37; --ritual: #856404;
-        --max-width: 70ch;
+# These must match your folder names exactly
+CONTENT_DIR = os.path.join(BASE_DIR, "content/activities")
+TEMPLATE_DIR = os.path.join(BASE_DIR, "templates")
+OUTPUT_FILE = os.path.join(BASE_DIR, "index.html")
+
+def simple_markdown(text):
+    if not text: return []
+    text = re.sub(r'\*(.*?)\*', r'<i>\1</i>', text)
+    paragraphs = [p.strip() for p in text.split('\n\n') if p.strip()]
+    return paragraphs
+
+def get_meta():
+    tz = pytz.timezone(TIMEZONE)
+    now = datetime.now(tz)
+    dom = now.day
+    last_day = calendar.monthrange(now.year, now.month)[1]
+    is_last_day = (dom == last_day)
+    return {
+        "date_str": now.strftime("%A, %B %d, %Y"),
+        "day_of_week": now.strftime("%A"),
+        "dom": dom,
+        "is_last_day": is_last_day,
+        "is_weekend": now.weekday() >= 5,
+        "is_rest_day": dom in [4, 9, 14, 19, 24] or is_last_day,
+        "is_uposatha": dom == 15 or is_last_day
     }
-    body { background-color: var(--bg); color: var(--text); font-family: system-ui, sans-serif; line-height: 1.7; font-size: 20px; margin: 0; padding: 0; }
-    .container { max-width: var(--max-width); margin: 0 auto; padding: 1.5rem; }
+
+def transform_schedule(section_name, activity_ids, meta):
+    new_ids = []
+    dom = meta["dom"]
+    if meta["is_rest_day"] and section_name.upper() == "EARLY HOURS":
+        return ["shaving"] 
+    for act_id in activity_ids:
+        if meta["is_rest_day"] and act_id == "shower_and_dress":
+            continue
+        if dom == 28 and act_id == "evening_zazen":
+            new_ids.append("two_ancestors_memorial")
+        sutra_days = [1, 5, 10, 15, 20, 25]
+        if dom in sutra_days and act_id == "late_afternoon_zazen":
+            new_ids.append(f"sutra_reading_{dom}")
+        target_id = act_id
+        if act_id == "morning_chant":
+            if dom in [1, 15]: target_id = "morning_chant_earth"
+            elif dom in [2, 16]: target_id = "morning_chant_local_spirits"
+        if act_id == "evening_chant":
+            if dom in [3, 13, 23]: target_id = "evening_chant_supporters"
+            elif dom in [8, 18, 28]: target_id = "evening_chant_impermanence"
+            elif meta["is_uposatha"]: target_id = "uposatha"
+        new_ids.append(target_id)
+    return new_ids
+
+def assemble():
+    meta = get_meta()
+    t_name = "weekday.yaml"
+    if meta["day_of_week"] == "Friday": t_name = "friday.yaml"
+    elif meta["is_weekend"]: t_name = "weekend.yaml"
     
-    /* Typography */
-    h1 { font-size: 2rem; color: var(--text); margin-bottom: 0.5rem; }
-    h2 { font-size: 1.6rem; color: var(--accent); border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; margin-top: 3rem; }
-    h3 { font-size: 1.3rem; margin-top: 2rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+    template_path = os.path.join(TEMPLATE_DIR, t_name)
+    if not os.path.exists(template_path):
+        print(f"DEBUG: Template not found at {template_path}")
+        return meta, []
 
-    /* Ritual Action Cards */
-    .ritual-cue { background: #fff; border: 2px solid var(--border); border-left: 5px solid var(--focus); padding: 1.2rem; margin: 1.5rem 0; border-radius: 8px; color: var(--ritual); font-weight: 500; }
-    .action-item { margin-bottom: 1.5rem; display: block; }
-    
-    /* Collapsible Chants */
-    details { margin: 1rem 0; border: 2px solid var(--border); border-radius: 12px; background: #fff; }
-    summary { padding: 1rem; cursor: pointer; font-weight: bold; color: var(--accent); display: flex; align-items: center; gap: 1rem; }
-    summary:focus { outline: none; background: var(--surface); }
-    
-    .step-badge { background: var(--accent); color: #fff; font-size: 0.8rem; width: 1.6rem; height: 1.6rem; display: flex; align-items: center; justify-content: center; border-radius: 50%; flex-shrink: 0; }
+    with open(template_path, 'r', encoding='utf-8') as f:
+        template = yaml.safe_load(f)
 
-    .chant-line { margin-bottom: 0.75rem; padding: 0.2rem 0.5rem; border-left: 3px solid transparent; }
-    .chant-line:active { background: #f0ede4; border-left: 3px solid var(--focus); }
+    final_sections = []
+    for sec in template['sections']:
+        active_ids = transform_schedule(sec['period'], sec['activity_ids'], meta)
+        activities = []
+        for act_id in active_ids:
+            path = os.path.join(CONTENT_DIR, f"{act_id}.yaml")
+            if os.path.exists(path):
+                with open(path, 'r', encoding='utf-8') as f:
+                    activities.append(yaml.safe_load(f))
+            else:
+                print(f"DEBUG: Activity file not found at {path}")
+        final_sections.append({"period": sec['period'], "activities": activities})
+    return meta, final_sections
 
-    /* At a Glance */
-    .glance-card { background: var(--surface); padding: 1.5rem; border-radius: 12px; border-left: 6px solid var(--accent); margin: 2rem 0; }
-    .glance-list { list-style: none; padding: 0; margin: 0; font-size: 0.95rem; }
-    .glance-label { font-weight: bold; color: var(--accent); width: 90px; display: inline-block; }
-</style>
-"""
+def render(meta, sections):
+    css = """
+    @import url('https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap');
+    body { font-family: 'Libre Baskerville', serif; max-width: 7.5in; margin: 1in auto; line-height: 1.6; text-align: justify; font-size: 11.5pt; color: #000; }
+    h1 { text-align: center; font-size: 26pt; border-bottom: 1px solid #000; padding-bottom: 15px; margin-bottom: 40px; }
+    h2 { text-align: center; text-transform: uppercase; letter-spacing: 0.5em; font-size: 14pt; margin: 60px 0 30px 0; font-weight: normal; }
+    .activity { margin-bottom: 1.8em; clear: both; }
+    .activity p { text-indent: 2.5em; margin: 0; padding: 0; }
+    .activity-title { font-weight: bold; text-transform: uppercase; }
+    .activity-title::after { content: ". "; }
+    i { font-style: italic; }
+    """
+    html = f"<html><head><style>{css}</style></head><body>"
+    html += f"<h1>{meta['date_str']}</h1>"
+    for s in sections:
+        if not s['activities']: continue
+        html += f"<h2>{s['period']}</h2>"
+        for a in s['activities']:
+            paragraphs = simple_markdown(a.get('body', ''))
+            html += f"<div class='activity'>"
+            if paragraphs:
+                first_p = paragraphs[0]
+                title_html = f"<span class='activity-title'>{a.get('title', 'Untitled')}</span>"
+                html += f"<p>{title_html}{first_p}</p>"
+                for other_p in paragraphs[1:]:
+                    html += f"<p>{other_p}</p>"
+            else:
+                html += f"<p><span class='activity-title'>{a.get('title', 'Untitled')}</span></p>"
+            html += f"</div>"
+    html += "</body></html>"
+    with open(OUTPUT_FILE, "w", encoding='utf-8') as f:
+        f.write(html)
 
-def render_item(item):
-    if isinstance(item, str):
-        return f'<div class="action-item">{item}</div>'
-
-    item_type = item.get("type")
-    if item_type in ["instruction", "ritual", "transition", "annual"]:
-        return f'<div class="ritual-cue">{item.get("content")}</div>'
-
-    if "chant_lines" in item or "data" in item:
-        data = item.get("data", item)
-        label = data.get("label", "Show Text")
-        title = data.get("title", "")
-        lines = data.get("chant_lines", [])
-        
-        summary_content = ""
-        if "step" in item:
-            summary_content += f'<span class="step-badge">{item["step"]}</span> '
-        
-        display_label = title if title else label.replace("Show ", "").replace("Open ", "")
-        summary_content += f'<span>{display_label}</span>'
-
-        content_html = '<div class="chant-container" style="padding: 1rem; border-top: 1px solid var(--border);">'
-        for line in lines:
-            content_html += f'<div class="chant-line">{line}</div>'
-        content_html += '</div>'
-
-        return f'<details><summary>{summary_content}</summary>{content_html}</details>'
-    return ""
-
-def format_as_markdown(target_date, data):
-    post_title = target_date.strftime('%A · %B %d')
-    full_iso_date = datetime.combine(target_date, time.min).replace(tzinfo=LOCAL_OFFSET).isoformat()
-
-    md = [
-        "---",
-        f"title: \"{post_title}\"",
-        f"date: {full_iso_date}",
-        "layout: post",
-        "---\n",
-        generate_css(),
-        '<div class="container">',
-        f'<h1>{post_title} · Daily Practice</h1>',
-        '<section class="glance-card"><ul class="glance-list">',
-        f'<li><span class="glance-label">Morning</span> {data["summary"]["morning"]}</li>',
-        f'<li><span class="glance-label">Midday</span> {data["summary"]["midday"]}</li>',
-        f'<li><span class="glance-label">Evening</span> {data["summary"]["evening"]}</li>',
-        f'<li><span class="glance-label">Night</span> {data["summary"]["night"]}</li></ul></section>',
-        '<main>'
-    ]
-    
-    for block_name, sections in data["blocks"]:
-        md.append(f'<section><h2>{block_name}</h2>')
-        for section_name, actions in sections:
-            md.append(f'<article><h3>{section_name}</h3>')
-            for action in actions:
-                md.append(render_item(action))
-            md.append('</article>')
-        md.append('</section>')
-    
-    md.append('</main><footer style="margin-top: 5rem; color: var(--muted); font-style: italic; border-top: 1px solid var(--border); padding-top: 2rem;">May this practice benefit all beings throughout the triple world.</footer></div>')
-    return "\n".join(md)
-
-def main():
-    today = datetime.now(timezone.utc).astimezone(LOCAL_OFFSET).date()
-    schedule_data = generate_daily_schedule(today)
-    markdown_content = format_as_markdown(today, schedule_data)
-    
-    output_dir = "_posts"
-    if not os.path.exists(output_dir): os.makedirs(output_dir)
-    file_name = f"{output_dir}/{today.isoformat()}-daily-practice.md"
-    with open(file_name, "w", encoding="utf-8") as f: f.write(markdown_content)
-    print(f"[Success] Generated for {today}: {file_name}")
-
-if __name__ == "__main__": main()
+if __name__ == "__main__":
+    metadata, final_sections = assemble()
+    render(metadata, final_sections)
