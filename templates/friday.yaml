@@ -1,0 +1,8 @@
+template_name: "Friday"
+sections:
+  - period: "EARLY HOURS"
+    activity_ids: ["wake_up", "face_washing", "dawn_zazen", "morning_chant"]
+  - period: "MORNING"
+    activity_ids: ["morning_meal", "commute", "work_practice"]
+  - period: "EVENING TRANSITION"
+    activity_ids: ["evening_zazen"]
