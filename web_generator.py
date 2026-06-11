@@ -21,7 +21,7 @@ def simple_markdown(text):
     return paragraphs
 
 def get_meta():
-    tz = pytz.timezone(TIMEZONE)
+    tz = pytz.timezone(TIMEZONE) # TIMEZONE must be "America/New_York"
     now = datetime.now(tz)
     dom = now.day
     last_day = calendar.monthrange(now.year, now.month)[1]
