@@ -2,8 +2,9 @@ name: Zen Missal Generator
 
 on:
   schedule:
-    - cron: '5 4 * * *' # Runs daily at approx midnight EST
-  workflow_dispatch: # Adds the manual "Run" button
+    - cron: '12 4 * * *'  # 12:12 AM EST (A non-standard minute is more reliable)
+    - cron: '30 5 * * *'  # 1:30 AM EST (A backup run in case the first is skipped)
+  workflow_dispatch:
 
 jobs:
   build:
