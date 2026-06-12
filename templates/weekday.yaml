@@ -1,0 +1,38 @@
+sections:
+  - period: "EARLY HOURS"
+    activity_ids:
+      - "wake_up"
+      - "face_washing_morning"
+      - "dawn_zazen"
+      - "donning_kesa"
+      - "morning_chant"
+      - "toilet"
+  - period: "MORNING"
+    activity_ids:
+      - "morning_meal"
+      - "communal_labor"
+      - "shower_and_dress"
+      - "commute"
+      - "work_practice"
+  - period: "MIDDAY"
+    activity_ids:
+      - "midday_zazen"
+      - "midday_chant"
+      - "midday_meal"
+  - period: "AFTERNOON"
+    activity_ids:
+      - "work_practice"
+      - "commute"
+      - "late_afternoon_zazen"
+  - period: "EVENING"
+    activity_ids:
+      - "evening_chant"
+      - "evening_meal"
+      - "family_time"
+      - "face_washing_evening"
+      - "evening_zazen"
+      - "four_vows"
+  - period: "LATE NIGHT"
+    activity_ids:
+      - "fire_watch"
+      - "sleep_practice"

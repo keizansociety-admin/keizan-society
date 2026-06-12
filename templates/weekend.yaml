@@ -1,0 +1,8 @@
+# templates/weekend.yaml
+sections:
+  - period: "WEEKEND"
+    activity_ids:
+      - weekend_instructions
+      - abbreviated_morning_service
+      - special_observances
+      - evening_chant

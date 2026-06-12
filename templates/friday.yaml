@@ -1,0 +1,29 @@
+# templates/friday.yaml
+sections:
+  - period: "EARLY HOURS"
+    activity_ids:
+      - wake_up
+      - face_washing_morning
+      - dawn_zazen
+      - morning_chant
+      - toilet
+
+  - period: "MORNING"
+    activity_ids:
+      - morning_meal
+      - commute
+      - work_practice
+
+  - period: "MIDDAY"
+    activity_ids:
+      - midday_zazen
+      - midday_chant
+      - midday_meal
+
+  - period: "AFTERNOON"
+    activity_ids:
+      - work_practice
+      - commute
+      - evening_chant
+      - calling_off
+      - evening_zazen
