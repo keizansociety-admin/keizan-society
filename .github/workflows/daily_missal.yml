@@ -2,9 +2,9 @@ name: Zen Missal Generator
 
 on:
   schedule:
-    - cron: '12 4 * * *' # Runs at 12:12 AM EST
-    - cron: '30 5 * * *' # Backup run at 1:30 AM EST
-  workflow_dispatch: # Manual "Run" button
+    - cron: '12 4 * * *' 
+    - cron: '30 5 * * *' 
+  workflow_dispatch: 
 
 jobs:
   build:
@@ -13,10 +13,13 @@ jobs:
       contents: write
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+
+      - name: List files for diagnostics
+        run: ls -R
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.10'
 
@@ -33,9 +36,3 @@ jobs:
           git add index.html
           git commit -m "Liturgical Update" || exit 0
           git push
-
-      - name: Purge Cloudflare Cache
-        uses: jakejarvis/cloudflare-purge-action@master
-        env:
-          CLOUDFLARE_ZONE: ${{ secrets.CLOUDFLARE_ZONE }}
-          CLOUDFLARE_TOKEN: ${{ secrets.CLOUDFLARE_TOKEN }}
