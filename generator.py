@@ -51,7 +51,7 @@ def check_time_gate():
     # If it is NOT the midnight hour (0), exit the script silently
     if now.hour != 0:
         print(f"Current hour is {now.hour}. Skipping update until midnight window.")
-        sys.exit(0)
+        #sys.exit(0)
     
     print("Midnight window detected. Proceeding with update...")
 
