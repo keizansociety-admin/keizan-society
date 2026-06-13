@@ -3,6 +3,10 @@ sections:
   - period: "WEEKEND"
     activity_ids:
       - weekend_instructions
-      - abbreviated_morning_service
+      - heart_sutra_sino
+      - main_object_veneration_eko
+      - daihishin_sino
+      - ancestors_eko
+      - heart_sutra_english
+      - kitchen_spirit_eko
       - special_observances
-      - evening_chant
