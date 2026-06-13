@@ -2,8 +2,7 @@ name: Zen Missal Generator
 
 on:
   schedule:
-    - cron: '12 5 * * *' 
-    - cron: '30 5 * * *' 
+    - cron: '0 * * * *'
   workflow_dispatch: 
 
 jobs:
