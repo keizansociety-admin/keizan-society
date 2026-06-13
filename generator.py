@@ -1,7 +1,8 @@
 """
-ZEN MISSAL GENERATOR (Version 2.2)
-----------------------------------
-Adds 'display: chant' support for specific liturgical formatting.
+ZEN MISSAL GENERATOR (Version 2.3 - Hourly Update)
+--------------------------------------------------
+This version runs every hour to ensure the website is always 
+up to date and reflects changes immediately.
 """
 
 import os
@@ -24,17 +25,6 @@ else:
 
 CONTENT_DIR = os.path.join(BASE_DIR, "content", "activities")
 TEMPLATE_DIR = os.path.join(BASE_DIR, "templates")
-
-def check_time_gate():
-    """Prevents updates outside the midnight window on GitHub."""
-    if os.getenv('GITHUB_ACTIONS') != 'true':
-        return 
-    tz = pytz.timezone(TIMEZONE)
-    now = datetime.now(tz)
-    if now.hour != 0:
-        print(f"Current hour is {now.hour}. Skipping update until midnight window.")
-        sys.exit(0)
-    print("Midnight window detected. Proceeding with update...")
 
 def simple_markdown(text):
     """Converts *italics* and **bold** to HTML and splits paragraphs."""
@@ -136,7 +126,7 @@ def render(meta, sections):
         f.write(html)
 
 if __name__ == "__main__":
-    check_time_gate()
+    # The Time Gate has been removed to allow hourly updates.
     metadata, final_sections = assemble()
     render(metadata, final_sections)
     print(f"Generated Missal for {metadata['date_str']}")
