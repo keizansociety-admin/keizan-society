@@ -1,5 +1,7 @@
 """
-ZEN MISSAL GENERATOR (Version 2.1 - Chant Styling)
+ZEN MISSAL GENERATOR (Version 2.2)
+----------------------------------
+Adds 'display: chant' support for specific liturgical formatting.
 """
 
 import os
@@ -24,6 +26,7 @@ CONTENT_DIR = os.path.join(BASE_DIR, "content", "activities")
 TEMPLATE_DIR = os.path.join(BASE_DIR, "templates")
 
 def check_time_gate():
+    """Prevents updates outside the midnight window on GitHub."""
     if os.getenv('GITHUB_ACTIONS') != 'true':
         return 
     tz = pytz.timezone(TIMEZONE)
@@ -34,36 +37,35 @@ def check_time_gate():
     print("Midnight window detected. Proceeding with update...")
 
 def simple_markdown(text):
+    """Converts *italics* and **bold** to HTML and splits paragraphs."""
     if not text: return []
+    text = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', text)
     text = re.sub(r'\*(.*?)\*', r'<i>\1</i>', text)
     paragraphs = [p.strip() for p in text.split('\n\n') if p.strip()]
     return paragraphs
 
 def get_meta():
+    """Calculates date and liturgical flags."""
     tz = pytz.timezone(TIMEZONE)
     now = datetime.now(tz)
     dom = now.day
-    month = now.month
     last_day = calendar.monthrange(now.year, now.month)[1]
     return {
         "date_str": now.strftime("%A, %B %d, %Y"),
         "day_of_week": now.strftime("%A"),
         "dom": dom,
-        "month": month,
-        "is_last_day": (dom == last_day),
         "is_weekend": now.weekday() >= 5,
         "is_rest_day": dom in [4, 9, 14, 19, 24] or (dom == last_day),
     }
 
 def transform_schedule(section_name, activity_ids, meta):
+    """Applies Keizan Shingi substitution rules."""
     new_ids = []
     dom = meta["dom"]
     if meta["is_rest_day"] and section_name.upper() == "EARLY HOURS":
         return ["shaving"] 
     for act_id in activity_ids:
-        if act_id == "special_observances":
-            new_ids.append(act_id)
-        elif act_id == "morning_chant":
+        if act_id == "morning_chant":
             if dom in [1, 15]: new_ids.append("morning_chant_earth")
             elif dom in [2, 16]: new_ids.append("morning_chant_local_spirits")
             else: new_ids.append(act_id)
@@ -72,6 +74,7 @@ def transform_schedule(section_name, activity_ids, meta):
     return new_ids
 
 def assemble():
+    """Loads templates and activity files."""
     meta = get_meta()
     t_name = "weekday.yaml"
     if meta["day_of_week"] == "Friday": t_name = "friday.yaml"
@@ -94,34 +97,29 @@ def assemble():
     return meta, final_sections
 
 def render(meta, sections):
-    """Generates the final HTML file with specific styling for chants."""
+    """Generates HTML with specific styling for chants."""
     css = """
     @import url('https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap');
     body { font-family: 'Libre Baskerville', serif; max-width: 7.5in; margin: 1in auto; line-height: 1.6; text-align: justify; font-size: 11.5pt; color: #000; }
     h1 { text-align: center; font-size: 26pt; border-bottom: 1px solid #000; padding-bottom: 15px; margin-bottom: 40px; }
     h2 { text-align: center; text-transform: uppercase; letter-spacing: 0.5em; font-size: 14pt; margin: 60px 0 30px 0; font-weight: normal; }
-    
-    /* Standard Activity Styling */
     .activity { margin-bottom: 1.8em; clear: both; }
     .activity p { text-indent: 2.5em; margin: 0; padding: 0; }
     .activity-title { font-weight: bold; text-transform: uppercase; }
     .activity-title::after { content: ". "; }
     
-    /* Chant-Specific Styling */
+    /* Chant Styling: Narrower, Left-Aligned, No Indent */
     .chant { max-width: 85%; margin: 2em auto; text-align: left; }
     .chant p { text-indent: 0 !important; margin-bottom: 0.8em; }
     """
     html = f"<html><head><style>{css}</style></head><body>"
     html += f"<h1>{meta['date_str']}</h1>"
-    
     for s in sections:
         if not s['activities']: continue
         html += f"<h2>{s['period']}</h2>"
         for a in s['activities']:
-            # Check if this activity is marked as a 'chant'
             is_chant = a.get('display') == 'chant'
             div_class = "activity chant" if is_chant else "activity"
-            
             paragraphs = simple_markdown(a.get('body', ''))
             html += f"<div class='{div_class}'>"
             if paragraphs:
@@ -134,7 +132,6 @@ def render(meta, sections):
                 html += f"<p><span class='activity-title'>{a.get('title', 'Untitled')}</span></p>"
             html += f"</div>"
     html += "</body></html>"
-    
     with open(OUTPUT_FILE, "w", encoding='utf-8') as f:
         f.write(html)
 
