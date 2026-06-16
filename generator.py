@@ -1,9 +1,9 @@
 """
-ZEN MISSAL GENERATOR (Version 2.5 - Uposatha & Heartbeat)
+ZEN MISSAL GENERATOR (Version 2.6 - Exhortations & Earth Eko)
 --------------------------------------------------
-1. Injects Uposatha Confession on the 15th and last day.
-2. Injects Two Ancestors Memorial on the 15th.
-3. Includes Heartbeat logic for GitHub priority.
+1. Injects Lay Exhortations on days 1, 5, 10, 15, 20, 25.
+2. Swaps Main Eko for Earth Eko on days 1 & 15.
+3. Maintains all previous Uposatha and Rest Day logic.
 """
 
 import os
@@ -56,22 +56,32 @@ def transform_schedule(section_name, activity_ids, meta):
     """
     new_ids = []
     dom = meta["dom"]
-    is_uposatha = meta["is_uposatha"]
     
+    # Mapping for Lay Exhortations (Sutra Readings)
+    exhortation_days = [1, 5, 10, 15, 20, 25]
+
     # RULE: Rest Day - Replace Early Hours with Shaving
     if meta["is_rest_day"] and section_name.upper() == "EARLY HOURS":
         return ["shaving"] 
 
     for act_id in activity_ids:
         
+        # RULE: Health of the Earth Eko (Days 1 & 15)
+        # Replaces the standard Main Object Eko
+        if act_id == "main_object_veneration_eko" and dom in [1, 15]:
+            new_ids.append("health_of_earth_eko")
+
+        # RULE: Lay Exhortations (Days 1, 5, 10, 15, 20, 25)
+        # Injected immediately before Late Afternoon Zazen
+        elif act_id == "late_afternoon_zazen" and dom in exhortation_days:
+            new_ids.append(f"sutra_reading_{dom}")
+            new_ids.append(act_id)
+
         # RULE: Morning Chant Substitutions (1st and 15th)
-        if act_id == "morning_chant":
-            if dom in [1, 15]:
-                new_ids.append("morning_chant_earth")
-            elif dom in [2, 16]:
-                new_ids.append("morning_chant_local_spirits")
-            else:
-                new_ids.append(act_id)
+        elif act_id == "morning_chant":
+            if dom in [1, 15]: new_ids.append("morning_chant_earth")
+            elif dom in [2, 16]: new_ids.append("morning_chant_local_spirits")
+            else: new_ids.append(act_id)
 
         # RULE: 15th Day - Memorial Service (Before Breakfast)
         elif act_id == "morning_meal" and dom == 15:
@@ -79,8 +89,7 @@ def transform_schedule(section_name, activity_ids, meta):
             new_ids.append(act_id)
             
         # RULE: Uposatha Confession (15th and Last Day)
-        # Injected before the evening chant as per lay instructions
-        elif act_id == "evening_chant" and is_uposatha:
+        elif act_id == "evening_chant" and meta["is_uposatha"]:
             new_ids.append("uposatha_confession")
             new_ids.append(act_id)
             
