@@ -1,8 +1,9 @@
 """
-ZEN MISSAL GENERATOR (Version 2.3 - Hourly Update)
+ZEN MISSAL GENERATOR (Version 2.5 - Uposatha & Heartbeat)
 --------------------------------------------------
-This version runs every hour to ensure the website is always 
-up to date and reflects changes immediately.
+1. Injects Uposatha Confession on the 15th and last day.
+2. Injects Two Ancestors Memorial on the 15th.
+3. Includes Heartbeat logic for GitHub priority.
 """
 
 import os
@@ -46,21 +47,46 @@ def get_meta():
         "dom": dom,
         "is_weekend": now.weekday() >= 5,
         "is_rest_day": dom in [4, 9, 14, 19, 24] or (dom == last_day),
+        "is_uposatha": dom == 15 or (dom == last_day)
     }
 
 def transform_schedule(section_name, activity_ids, meta):
-    """Applies Keizan Shingi substitution rules."""
+    """
+    Applies Keizan Shingi substitution and injection rules.
+    """
     new_ids = []
     dom = meta["dom"]
+    is_uposatha = meta["is_uposatha"]
+    
+    # RULE: Rest Day - Replace Early Hours with Shaving
     if meta["is_rest_day"] and section_name.upper() == "EARLY HOURS":
         return ["shaving"] 
+
     for act_id in activity_ids:
+        
+        # RULE: Morning Chant Substitutions (1st and 15th)
         if act_id == "morning_chant":
-            if dom in [1, 15]: new_ids.append("morning_chant_earth")
-            elif dom in [2, 16]: new_ids.append("morning_chant_local_spirits")
-            else: new_ids.append(act_id)
+            if dom in [1, 15]:
+                new_ids.append("morning_chant_earth")
+            elif dom in [2, 16]:
+                new_ids.append("morning_chant_local_spirits")
+            else:
+                new_ids.append(act_id)
+
+        # RULE: 15th Day - Memorial Service (Before Breakfast)
+        elif act_id == "morning_meal" and dom == 15:
+            new_ids.append("two_ancestors_memorial")
+            new_ids.append(act_id)
+            
+        # RULE: Uposatha Confession (15th and Last Day)
+        # Injected before the evening chant as per lay instructions
+        elif act_id == "evening_chant" and is_uposatha:
+            new_ids.append("uposatha_confession")
+            new_ids.append(act_id)
+            
         else:
             new_ids.append(act_id)
+            
     return new_ids
 
 def assemble():
@@ -87,7 +113,7 @@ def assemble():
     return meta, final_sections
 
 def render(meta, sections):
-    """Generates HTML with specific styling for chants."""
+    """Generates HTML and updates the heartbeat file."""
     css = """
     @import url('https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap');
     body { font-family: 'Libre Baskerville', serif; max-width: 7.5in; margin: 1in auto; line-height: 1.6; text-align: justify; font-size: 11.5pt; color: #000; }
@@ -97,8 +123,6 @@ def render(meta, sections):
     .activity p { text-indent: 2.5em; margin: 0; padding: 0; }
     .activity-title { font-weight: bold; text-transform: uppercase; }
     .activity-title::after { content: ". "; }
-    
-    /* Chant Styling: Narrower, Left-Aligned, No Indent */
     .chant { max-width: 85%; margin: 2em auto; text-align: left; }
     .chant p { text-indent: 0 !important; margin-bottom: 0.8em; }
     """
@@ -122,11 +146,16 @@ def render(meta, sections):
                 html += f"<p><span class='activity-title'>{a.get('title', 'Untitled')}</span></p>"
             html += f"</div>"
     html += "</body></html>"
+    
     with open(OUTPUT_FILE, "w", encoding='utf-8') as f:
         f.write(html)
 
+    # --- HEARTBEAT LOGIC ---
+    heartbeat_path = os.path.join(BASE_DIR, "heartbeat.txt")
+    with open(heartbeat_path, "w", encoding='utf-8') as f:
+        f.write(f"Last Pulse: {datetime.now(pytz.timezone(TIMEZONE))}")
+
 if __name__ == "__main__":
-    # The Time Gate has been removed to allow hourly updates.
     metadata, final_sections = assemble()
     render(metadata, final_sections)
     print(f"Generated Missal for {metadata['date_str']}")
