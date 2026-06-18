@@ -1,8 +1,8 @@
 """
-ZEN MISSAL GENERATOR (Version 3.1)
+ZEN MISSAL GENERATOR (Version 3.2)
 ----------------------------------
 Meticulously debugged for liturgical formatting and GitHub Actions.
-Fix: Ensures Activity Titles and Body text are inline (no line breaks).
+Fix: Ensures Activity Titles and Body text are inline (no line breaks). path for index.html
 """
 
 import os
@@ -12,15 +12,18 @@ import sys
 import scheduler  # Externalized liturgical logic module
 
 # --- SMART CONFIGURATION ---
-# Determine the base directory and ensure the output path is consistent
+# This detects if the script is running on GitHub or locally on your Mac
 if os.getenv('GITHUB_ACTIONS') == 'true':
+    # GitHub Environment
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    # We save to the root index.html for GitHub Pages compatibility
+    OUTPUT_FILE = os.path.join(BASE_DIR, "index.html")
 else:
-    # Local path for development (Thonny / Dropbox)
+    # Local Environment (Thonny / Dropbox)
     BASE_DIR = "/Users/jocorsoesquivel/Dropbox/zen_missal"
+    # We save to the output folder for your local organization
+    OUTPUT_FILE = os.path.join(BASE_DIR, "output", "index.html")
 
-# Pathing aligned with the provided file tree
-OUTPUT_FILE = os.path.join(BASE_DIR, "output", "index.html")
 CONTENT_DIR = os.path.join(BASE_DIR, "content", "activities")
 TEMPLATE_DIR = os.path.join(BASE_DIR, "templates")
 
