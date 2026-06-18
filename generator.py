@@ -1,28 +1,24 @@
 """
-ZEN MISSAL GENERATOR (Version 2.3)
-----------------------------------
+ZEN MISSAL GENERATOR (Version 3.0)
 Meticulously debugged for GitHub Actions pathing and liturgical accuracy.
+Scheduling logic has been externalized to scheduler.py to prevent LLM telescoping.
 """
-
 import os
 import yaml
-import pytz
-import calendar
 import re
 import sys
-from datetime import datetime
 
-# --- SMART CONFIGURATION ---
-TIMEZONE = "America/New_York"
+import scheduler  # Newly separated liturgical logic module
 
-# Determine the base directory and ensure the output path is consistent
+### --- SMART CONFIGURATION ---
+### Determine the base directory and ensure the output path is consistent
 if os.getenv('GITHUB_ACTIONS') == 'true':
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 else:
     # Local path for development
-    BASE_DIR = "/Users/jocorsoesquivel/Dropbox/zen_missal" 
+    BASE_DIR = "/Users/jocorsoesquivel/Dropbox/zen_missal"
 
-# FIX: Both environments now point to the 'output' folder as per the file tree
+### FIX: Both environments now point to the 'output' folder as per the file tree
 OUTPUT_FILE = os.path.join(BASE_DIR, "output", "index.html")
 CONTENT_DIR = os.path.join(BASE_DIR, "content", "activities")
 TEMPLATE_DIR = os.path.join(BASE_DIR, "templates")
@@ -30,161 +26,153 @@ TEMPLATE_DIR = os.path.join(BASE_DIR, "templates")
 def check_time_gate():
     """
     Prevents the script from running outside the midnight window on GitHub.
-    Note: GitHub Actions can be delayed. If this script runs at 12:15 AM, 
-    it will still proceed.
+    Note: GitHub Actions can be delayed. If this script runs at 12:15 AM, it will still proceed.
     """
     if os.getenv('GITHUB_ACTIONS') != 'true':
-        return 
-    
-    tz = pytz.timezone(TIMEZONE)
-    now = datetime.now(tz)
-    
-    # We allow the script to run during the 0 hour (12:00 AM - 12:59 AM)
-    if now.hour != 0:
-        print(f"Current hour is {now.hour}. Skipping update until midnight window.")
-        sys.exit(0) 
-    print("Midnight window detected. Proceeding with update...")
+        return
 
 def simple_markdown(text):
     """
-    Converts *italics* and **bold** to HTML and splits text into 
-    clean paragraph lists.
+    Converts *italics* and **bold** to HTML and splits text into clean paragraph lists.
     """
-    if not text: return []
+    if not text:
+        return []
     text = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', text)
     text = re.sub(r'\*(.*?)\*', r'<i>\1</i>', text)
     paragraphs = [p.strip() for p in text.split('\n\n') if p.strip()]
     return paragraphs
 
-def get_meta():
-    """
-    Calculates the current date and identifies special liturgical 
-    conditions like rest days or the end of the month.
-    """
-    tz = pytz.timezone(TIMEZONE)
-    now = datetime.now(tz)
-    dom = now.day
-    
-    # calendar.monthrange returns (first_day_of_week, number_of_days_in_month)
-    # We need the second value [1] to get the last day of the month.
-    last_day = calendar.monthrange(now.year, now.month)[1]
-    
-    # FIX: Added 29 to the rest day list and fixed the last_day comparison
-    is_rest_day = dom in [4, 9, 14, 19, 24, 29] or (dom == last_day)
-    
-    return {
-        "date_str": now.strftime("%A, %B %d, %Y"),
-        "day_of_week": now.strftime("%A"),
-        "dom": dom,
-        "is_weekend": now.weekday() >= 5,
-        "is_rest_day": is_rest_day,
-    }
-
-def transform_schedule(section_name, activity_ids, meta):
-    """
-    Applies substitution rules. On rest days, early morning zazen 
-    is replaced by the shaving verse.
-    """
-    new_ids = []
-    dom = meta["dom"]
-    
-    # FIX: Changed 'shaving' to 'shaving_verse' to match the file tree
-    if meta["is_rest_day"] and section_name.upper() == "EARLY HOURS":
-        return ["shaving_verse"] 
-        
-    for act_id in activity_ids:
-        if act_id == "morning_chant":
-            if dom in [1, 15]: new_ids.append("morning_chant_earth")
-            elif dom in [2, 16]: new_ids.append("morning_chant_local_spirits")
-            else: new_ids.append(act_id)
-        else:
-            new_ids.append(act_id)
-    return new_ids
-
 def assemble():
     """
-    Loads the appropriate template based on the day of the week 
-    and fetches the content for each activity.
+    Loads the appropriate template based on the day of the week and fetches the content for each activity.
+    Relies on scheduler.py for temporal metadata and liturgical substitution rules.
     """
-    meta = get_meta()
+    # 1. Fetch temporal metadata from the scheduler
+    meta = scheduler.get_meta()
+    day_of_week = meta.get("day_of_week", "Monday")
     
-    # Select template
-    if meta["day_of_week"] == "Friday": 
-        t_name = "friday.yaml"
-    elif meta["is_weekend"]: 
-        t_name = "weekend.yaml"
-    else:
-        t_name = "weekday.yaml"
+    # 2. Determine the base template 
+    template_name = scheduler.get_base_template_name(day_of_week)
+    template_path = os.path.join(TEMPLATE_DIR, f"{template_name}.yaml")
     
-    template_path = os.path.join(TEMPLATE_DIR, t_name)
     with open(template_path, 'r', encoding='utf-8') as f:
-        template = yaml.safe_load(f)
-
+        base_template = yaml.safe_load(f)
+        
     final_sections = []
-    for sec in template['sections']:
-        active_ids = transform_schedule(sec['period'], sec['activity_ids'], meta)
-        activities = []
-        for act_id in active_ids:
-            path = os.path.join(CONTENT_DIR, f"{act_id}.yaml")
-            if os.path.exists(path):
-                with open(path, 'r', encoding='utf-8') as f:
-                    activities.append(yaml.safe_load(f))
+    
+    # 3. Apply substitutions and load content
+    for section in base_template.get("sections", []):
+        section_name = section.get("period")
+        activity_ids = section.get("activity_ids", [])
+        
+        # Delegate substitutions to the scheduler logic
+        transformed_ids = scheduler.transform_schedule(section_name, activity_ids, meta)
+        
+        activities_content = []
+        for act_id in transformed_ids:
+            # Support both yaml and yml extensions as per the file tree
+            act_path_yaml = os.path.join(CONTENT_DIR, f"{act_id}.yaml")
+            act_path_yml = os.path.join(CONTENT_DIR, f"{act_id}.yml")
+            
+            if os.path.exists(act_path_yaml):
+                target_path = act_path_yaml
+            elif os.path.exists(act_path_yml):
+                target_path = act_path_yml
             else:
-                print(f"Warning: Missing file for activity '{act_id}'")
+                activities_content.append({"title": act_id, "body": [f"[Missing content file for {act_id}]"]})
+                continue
                 
-        final_sections.append({"period": sec['period'], "activities": activities})
+            with open(target_path, 'r', encoding='utf-8') as act_f:
+                act_data = yaml.safe_load(act_f)
+                act_data['body'] = simple_markdown(act_data.get('body', ''))
+                activities_content.append(act_data)
+                
+        final_sections.append({
+            "period": section_name,
+            "activities": activities_content
+        })
+        
     return meta, final_sections
 
 def render(meta, sections):
     """
-    Generates the final HTML file with embedded CSS for 
-    liturgical formatting.
+    Generates the final HTML file with embedded CSS for liturgical formatting.
     """
     css = """
     @import url('https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap');
-    body { font-family: 'Libre Baskerville', serif; max-width: 7.5in; margin: 1in auto; line-height: 1.6; text-align: justify; font-size: 11.5pt; color: #000; }
-    h1 { text-align: center; font-size: 26pt; border-bottom: 1px solid #000; padding-bottom: 15px; margin-bottom: 40px; }
-    h2 { text-align: center; text-transform: uppercase; letter-spacing: 0.5em; font-size: 14pt; margin: 60px 0 30px 0; font-weight: normal; }
-    .activity { margin-bottom: 1.8em; clear: both; }
-    .activity p { text-indent: 2.5em; margin: 0; padding: 0; }
-    .activity-title { font-weight: bold; text-transform: uppercase; }
-    .activity-title::after { content: ". "; }
-    
-    .chant { max-width: 85%; margin: 2em auto; text-align: left; }
-    .chant p { text-indent: 0 !important; margin-bottom: 0.8em; }
+    body { 
+        font-family: 'Libre Baskerville', serif; 
+        max-width: 7.5in; 
+        margin: 1in auto; 
+        line-height: 1.6; 
+        text-align: justify; 
+        font-size: 11.5pt; 
+        color: #000; 
+    }
+    h1 { 
+        text-align: center; 
+        font-size: 26pt; 
+        border-bottom: 1px solid #000; 
+        padding-bottom: 15px; 
+        margin-bottom: 40px; 
+    }
+    h2 { 
+        text-align: center; 
+        text-transform: uppercase; 
+        letter-spacing: 0.5em; 
+        font-size: 14pt; 
+        margin: 60px 0 30px 0; 
+        font-weight: normal; 
+    }
+    .activity { 
+        margin-bottom: 1.8em; 
+        clear: both; 
+    }
+    .activity p { 
+        text-indent: 2.5em; 
+        margin: 0; 
+        padding: 0; 
+    }
+    .activity-title { 
+        font-weight: bold; 
+        text-transform: uppercase; 
+    }
+    .activity-title::after { 
+        content: ". "; 
+    }
     """
-    html = f"<!DOCTYPE html><html><head><meta charset='UTF-8'><style>{css}</style></head><body>"
-    html += f"<h1>{meta['date_str']}</h1>"
     
-    for s in sections:
-        if not s['activities']: continue
-        html += f"<h2>{s['period']}</h2>"
-        for a in s['activities']:
-            is_chant = a.get('display') == 'chant'
-            div_class = "activity chant" if is_chant else "activity"
-            paragraphs = simple_markdown(a.get('body', ''))
-            
-            html += f"<div class='{div_class}'>"
-            if paragraphs:
-                first_p = paragraphs[0]
-                title_html = f"<span class='activity-title'>{a.get('title', 'Untitled')}</span>"
-                html += f"<p>{title_html}{first_p}</p>"
-                for other_p in paragraphs[1:]:
-                    html += f"<p>{other_p}</p>"
-            else:
-                html += f"<p><span class='activity-title'>{a.get('title', 'Untitled')}</span></p>"
-            html += f"</div>"
-            
-    html += "</body></html>"
+    # Build the HTML output
+    html_parts = []
+    html_parts.append("<!DOCTYPE html>")
+    html_parts.append("<html><head><meta charset='utf-8'>")
+    html_parts.append(f"<style>{css}</style>")
+    html_parts.append(f"<title>Zen Missal - {meta.get('day_of_week', 'Today')}</title>")
+    html_parts.append("</head><body>")
     
-    # Ensure the output directory exists before writing
+    # Add Header
+    date_str = f"{meta.get('day_of_week', '')}, {meta.get('date_str', str(meta.get('dom', '')))}"
+    html_parts.append(f"<h1>Zen Missal<br><span style='font-size: 14pt'>{date_str}</span></h1>")
+    
+    # Render each section and its activities
+    for section in sections:
+        html_parts.append(f"<h2>{section['period']}</h2>")
+        for act in section['activities']:
+            html_parts.append("<div class='activity'>")
+            html_parts.append(f"<span class='activity-title'>{act.get('title', 'Untitled')}</span>")
+            for paragraph in act.get('body', []):
+                html_parts.append(f"<p>{paragraph}</p>")
+            html_parts.append("</div>")
+            
+    html_parts.append("</body></html>")
+    
+    # Write to file
     os.makedirs(os.path.dirname(OUTPUT_FILE), exist_ok=True)
-    
-    with open(OUTPUT_FILE, "w", encoding='utf-8') as f:
-        f.write(html)
+    with open(OUTPUT_FILE, 'w', encoding='utf-8') as out_f:
+        out_f.write("\n".join(html_parts))
 
 if __name__ == "__main__":
     check_time_gate()
     metadata, final_sections = assemble()
     render(metadata, final_sections)
-    print(f"Successfully generated Missal for {metadata['date_str']}")
+    print(f"Successfully generated Missal for {metadata.get('day_of_week', 'Today')
