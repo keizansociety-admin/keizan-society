@@ -175,4 +175,4 @@ if __name__ == "__main__":
     check_time_gate()
     metadata, final_sections = assemble()
     render(metadata, final_sections)
-    print(f"Successfully generated Missal for {metadata.get('day_of_week', 'Today')
+    print(f"Successfully generated Missal for {metadata.get('day_of_week', 'Today')}")
