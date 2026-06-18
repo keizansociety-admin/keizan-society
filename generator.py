@@ -166,7 +166,7 @@ def render(meta, sections):
     html_parts.append("<!DOCTYPE html>")
     html_parts.append("<html><head><meta charset='utf-8'>")
     html_parts.append(f"<style>{css}</style>")
-    html_parts.append(f"<title>Zen Missal - {meta.get('day_of_week', 'Today')}</title>")
+    html_parts.append(f"<title>Householder's Shingi - {meta.get('day_of_week', 'Today')}</title>")
     html_parts.append("</head><body>")
     
     # Header Section
