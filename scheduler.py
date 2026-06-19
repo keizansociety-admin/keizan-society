@@ -58,17 +58,18 @@ def transform_schedule(section_name: str, activity_ids: list, meta: dict) -> lis
 
     # --- RULE I: SHAVING & MAINTENANCE (Days ending in 4 or 9) ---
     if is_shaving_day and section_name == "EARLY HOURS":
-        # 1. INSERT shaving_verse AFTER face_washing_morning
+        # 1. INSERT shaving_verse and shower_and_dress AFTER face_washing_morning
         if "face_washing_morning" in new_ids:
             idx = new_ids.index("face_washing_morning")
+            # We insert in reverse order or increment the index to maintain sequence
             new_ids.insert(idx + 1, "shaving_verse")
+            new_ids.insert(idx + 2, "shower_and_dress")
         
         # 2. DELETE dawn_zazen
         if "dawn_zazen" in new_ids:
             new_ids.remove("dawn_zazen")
             
         # 3. DELETE morning_chant (and any variants)
-        # We use a list comprehension to filter out any chant-related IDs
         chant_variants = [
             "morning_chant", 
             "morning_chant_health_of_the_earth", 
