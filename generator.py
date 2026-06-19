@@ -1,5 +1,5 @@
 """
-ZEN MISSAL GENERATOR (Version 3.2)
+ZEN MISSAL GENERATOR (Version 3.3)
 ----------------------------------
 Meticulously debugged for liturgical formatting and GitHub Actions.
 Fix: Ensures Activity Titles and Body text are inline (no line breaks). path for index.html
@@ -115,8 +115,8 @@ def assemble():
 def render(meta, sections):
     """
     Generates the final HTML file.
-    UX FIX: Injects the activity title into the first paragraph tag 
-    to ensure they stay on the same line.
+    UX FIX: Injects the activity title into the first paragraph tag.
+    LITURGICAL FIX: Displays 'Shaving & Maintenance Day' below the date on 4/9 days.
     """
     css = """
     @import url('https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap');
@@ -160,20 +160,43 @@ def render(meta, sections):
     .activity-title::after { 
         content: ". "; 
     }
+    .sub-header {
+        font-size: 14pt;
+        display: block;
+        margin-top: 10px;
+    }
+    .shaving-label {
+        font-size: 13pt;
+        font-style: italic;
+        color: #444;
+        display: block;
+        margin-top: 5px;
+    }
     """
     
     html_parts = []
     html_parts.append("<!DOCTYPE html>")
     html_parts.append("<html><head><meta charset='utf-8'>")
     html_parts.append(f"<style>{css}</style>")
-    html_parts.append(f"<title>Householder's Shingi - {meta.get('day_of_week', 'Today')}</title>")
+    html_parts.append(f"<title>Zen Missal - {meta.get('day_of_week', 'Today')}</title>")
     html_parts.append("</head><body>")
     
-    # Header Section
-    date_display = f"{meta.get('day_of_week', '')}, {meta.get('date_str', '')}"
-    html_parts.append(f"<h1>Zen Missal<br><span style='font-size: 14pt'>{date_display}</span></h1>")
+    # --- HEADER SECTION ---
+    shaving_html = ""
+    if meta.get("is_shaving_day"):
+        shaving_html = "<span class='shaving-label'>Shaving & Maintenance Day</span>"
     
-    # Content Sections
+    date_str = f"{meta.get('day_of_week', '')}, {meta.get('date_str', '')}"
+    
+    html_parts.append(f"""
+    <h1>
+        Zen Missal<br>
+        <span class='sub-header'>{date_str}</span>
+        {shaving_html}
+    </h1>
+    """)
+    
+    # --- CONTENT SECTIONS ---
     for section in sections:
         if not section['activities']:
             continue
@@ -187,7 +210,6 @@ def render(meta, sections):
             title_html = f"<span class='activity-title'>{act.get('title', 'Untitled')}</span>"
             
             if paragraphs:
-                # CRITICAL FORMATTING FIX:
                 # Place the title span INSIDE the first <p> tag to keep them inline.
                 first_p = paragraphs[0]
                 html_parts.append(f"<p>{title_html}{first_p}</p>")
@@ -196,7 +218,7 @@ def render(meta, sections):
                 for other_p in paragraphs[1:]:
                     html_parts.append(f"<p>{other_p}</p>")
             else:
-                # Fallback if body is empty
+                # Fallback if body is empty (Fixed syntax here)
                 html_parts.append(f"<p>{title_html}</p>")
                 
             html_parts.append("</div>")
