@@ -117,6 +117,7 @@ def render(meta, sections):
     Generates the final HTML file.
     UX FIX: Injects the activity title into the first paragraph tag.
     LITURGICAL FIX: Displays 'Shaving & Maintenance Day' below the date on 4/9 days.
+    BRANDING FIX: Title updated to 'Householder's Shingi' (no asterisk).
     """
     css = """
     @import url('https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap');
@@ -178,19 +179,19 @@ def render(meta, sections):
     html_parts.append("<!DOCTYPE html>")
     html_parts.append("<html><head><meta charset='utf-8'>")
     html_parts.append(f"<style>{css}</style>")
-    html_parts.append(f"<title>Zen Missal - {meta.get('day_of_week', 'Today')}</title>")
+    html_parts.append(f"<title>Householder's Shingi - {meta.get('day_of_week', 'Today')}</title>")
     html_parts.append("</head><body>")
     
     # --- HEADER SECTION ---
     shaving_html = ""
     if meta.get("is_shaving_day"):
-        shaving_html = "<span class='shaving-label'>Shaving & Maintenance Day</span>"
+        shaving_html = f"<span class='shaving-label'>Shaving & Maintenance Day</span>"
     
     date_str = f"{meta.get('day_of_week', '')}, {meta.get('date_str', '')}"
     
     html_parts.append(f"""
     <h1>
-        Zen Missal<br>
+        Householder's Shingi<br>
         <span class='sub-header'>{date_str}</span>
         {shaving_html}
     </h1>
@@ -210,7 +211,7 @@ def render(meta, sections):
             title_html = f"<span class='activity-title'>{act.get('title', 'Untitled')}</span>"
             
             if paragraphs:
-                # Place the title span INSIDE the first <p> tag to keep them inline.
+                # UX FIX: Place the title span INSIDE the first <p> tag to keep them inline.
                 first_p = paragraphs[0]
                 html_parts.append(f"<p>{title_html}{first_p}</p>")
                 
@@ -218,7 +219,7 @@ def render(meta, sections):
                 for other_p in paragraphs[1:]:
                     html_parts.append(f"<p>{other_p}</p>")
             else:
-                # Fallback if body is empty (Fixed syntax here)
+                # Fallback if body is empty
                 html_parts.append(f"<p>{title_html}</p>")
                 
             html_parts.append("</div>")
