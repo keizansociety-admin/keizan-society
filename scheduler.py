@@ -39,7 +39,7 @@ def get_base_template_name(day_of_week: str) -> str:
 def transform_schedule(section_name: str, activity_ids: list, meta: dict) -> list:
     """
     Applies liturgical rules. 
-    Updated with robust anchor matching for Study Days.
+    Updated with robust anchor matching for Study Days and Memorials.
     """
     dom = meta["dom"]
     month = meta["month"]
@@ -49,14 +49,20 @@ def transform_schedule(section_name: str, activity_ids: list, meta: dict) -> lis
     
     new_ids = activity_ids.copy()
 
+    # Helper to find index of any anchor in a list of possibilities
+    def get_anchor_idx(possibilities):
+        for p in possibilities:
+            if p in new_ids:
+                return new_ids.index(p)
+        return None
+
     # --- RULE I: SHAVING & MAINTENANCE (4/9) ---
     if is_shaving_day and section_name == "EARLY HOURS":
-        if "face_washing_morning" in new_ids:
-            idx = new_ids.index("face_washing_morning")
+        idx = get_anchor_idx(["face_washing_morning", "face-washing-morning"])
+        if idx is not None:
             new_ids.insert(idx + 1, "shaving_verse")
             new_ids.insert(idx + 2, "shower_and_dress")
-        if "dawn_zazen" in new_ids:
-            new_ids.remove("dawn_zazen")
+        if "dawn_zazen" in new_ids: new_ids.remove("dawn_zazen")
         new_ids = [act for act in new_ids if "morning_chant" not in act]
 
     # --- MORNING RULES (Memorial Chants) ---
@@ -66,14 +72,11 @@ def transform_schedule(section_name: str, activity_ids: list, meta: dict) -> lis
         new_ids[new_ids.index("morning_chant")] = "morning_chant_local_spirits"
 
     # --- EVENING RULES (Memorial Additions) ---
-    # We check for both underscore and hyphen versions of the anchor
-    evening_anchors = ["late_afternoon_zazen", "late-afternoon_zazen"]
-    for anchor in evening_anchors:
-        if anchor in new_ids:
-            idx = new_ids.index(anchor)
-            if dom in [3, 13, 23]: new_ids.insert(idx, "prayers_for_supporters")
-            if (dom == 29) or (month == 2 and is_last_day): new_ids.insert(idx, "two_ancestors_memorial")
-            if dom in [8, 18, 28]: new_ids.insert(idx, "admonition_of_impermanence")
+    idx = get_anchor_idx(["late_afternoon_zazen", "late-afternoon_zazen"])
+    if idx is not None:
+        if dom in [3, 13, 23]: new_ids.insert(idx, "prayers_for_supporters")
+        if (dom == 29) or (month == 2 and is_last_day): new_ids.insert(idx, "two_ancestors_memorial")
+        if dom in [8, 18, 28]: new_ids.insert(idx, "admonition_of_impermanence")
 
     # --- RULE J: STUDY & READING (1, 5, 10, 15, 20, 25) ---
     reading_days = {1: "sutra_reading_01", 5: "sutra_reading_05", 10: "sutra_reading_10", 
@@ -82,13 +85,6 @@ def transform_schedule(section_name: str, activity_ids: list, meta: dict) -> lis
     if dom in reading_days:
         reading_id = reading_days[dom]
         
-        # Helper to find index of any anchor in a list of possibilities
-        def get_anchor_idx(possibilities):
-            for p in possibilities:
-                if p in new_ids:
-                    return new_ids.index(p)
-            return None
-
         # WEEKDAY: Before Late Afternoon Zazen
         if day_of_week in ["Monday", "Tuesday", "Wednesday", "Thursday"]:
             idx = get_anchor_idx(["late_afternoon_zazen", "late-afternoon_zazen"])
