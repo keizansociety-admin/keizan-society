@@ -2,7 +2,7 @@
 scheduler.py
 ============
 A dedicated module for calculating Zen liturgical schedules.
-FIX: Robust anchor detection (handles hyphens and underscores).
+UX FIX: "Fuzzy Matching" allows hyphens or underscores to work interchangeably.
 """
 
 from datetime import datetime
@@ -38,8 +38,8 @@ def get_base_template_name(day_of_week: str) -> str:
 
 def transform_schedule(section_name: str, activity_ids: list, meta: dict) -> list:
     """
-    Applies liturgical rules. 
-    Updated with robust anchor matching for Study Days and Memorials.
+    Applies liturgical rules.
+    Uses normalization so 'late-afternoon' matches 'late_afternoon'.
     """
     dom = meta["dom"]
     month = meta["month"]
@@ -49,34 +49,41 @@ def transform_schedule(section_name: str, activity_ids: list, meta: dict) -> lis
     
     new_ids = activity_ids.copy()
 
-    # Helper to find index of any anchor in a list of possibilities
-    def get_anchor_idx(possibilities):
-        for p in possibilities:
-            if p in new_ids:
-                return new_ids.index(p)
+    def normalize(s):
+        """Standardizes strings: 'Late-Afternoon ' -> 'late_afternoon'"""
+        return str(s).strip().lower().replace("-", "_")
+
+    def find_anchor_index(target_id):
+        """Finds the index of an ID regardless of hyphens/underscores."""
+        norm_target = normalize(target_id)
+        for i, act_id in enumerate(new_ids):
+            if normalize(act_id) == norm_target:
+                return i
         return None
 
     # --- RULE I: SHAVING & MAINTENANCE (4/9) ---
     if is_shaving_day and section_name == "EARLY HOURS":
-        idx = get_anchor_idx(["face_washing_morning", "face-washing-morning"])
+        idx = find_anchor_index("face_washing_morning")
         if idx is not None:
             new_ids.insert(idx + 1, "shaving_verse")
             new_ids.insert(idx + 2, "shower_and_dress")
-        if "dawn_zazen" in new_ids: new_ids.remove("dawn_zazen")
-        new_ids = [act for act in new_ids if "morning_chant" not in act]
+        
+        z_idx = find_anchor_index("dawn_zazen")
+        if z_idx is not None: new_ids.pop(z_idx)
+        new_ids = [act for act in new_ids if "morning_chant" not in normalize(act)]
 
     # --- MORNING RULES (Memorial Chants) ---
-    if dom in [1, 15] and "morning_chant" in new_ids:
-        new_ids[new_ids.index("morning_chant")] = "morning_chant_health_of_the_earth"
-    if dom in [2, 16] and "morning_chant" in new_ids:
-        new_ids[new_ids.index("morning_chant")] = "morning_chant_local_spirits"
+    m_idx = find_anchor_index("morning_chant")
+    if m_idx is not None:
+        if dom in [1, 15]: new_ids[m_idx] = "morning_chant_health_of_the_earth"
+        if dom in [2, 16]: new_ids[m_idx] = "morning_chant_local_spirits"
 
     # --- EVENING RULES (Memorial Additions) ---
-    idx = get_anchor_idx(["late_afternoon_zazen", "late-afternoon_zazen"])
-    if idx is not None:
-        if dom in [3, 13, 23]: new_ids.insert(idx, "prayers_for_supporters")
-        if (dom == 29) or (month == 2 and is_last_day): new_ids.insert(idx, "two_ancestors_memorial")
-        if dom in [8, 18, 28]: new_ids.insert(idx, "admonition_of_impermanence")
+    e_idx = find_anchor_index("late_afternoon_zazen")
+    if e_idx is not None:
+        if dom in [3, 13, 23]: new_ids.insert(e_idx, "prayers_for_supporters")
+        if (dom == 29) or (month == 2 and is_last_day): new_ids.insert(e_idx, "two_ancestors_memorial")
+        if dom in [8, 18, 28]: new_ids.insert(e_idx, "admonition_of_impermanence")
 
     # --- RULE J: STUDY & READING (1, 5, 10, 15, 20, 25) ---
     reading_days = {1: "sutra_reading_01", 5: "sutra_reading_05", 10: "sutra_reading_10", 
@@ -85,22 +92,16 @@ def transform_schedule(section_name: str, activity_ids: list, meta: dict) -> lis
     if dom in reading_days:
         reading_id = reading_days[dom]
         
-        # WEEKDAY: Before Late Afternoon Zazen
         if day_of_week in ["Monday", "Tuesday", "Wednesday", "Thursday"]:
-            idx = get_anchor_idx(["late_afternoon_zazen", "late-afternoon_zazen"])
-            if idx is not None:
-                new_ids.insert(idx, reading_id)
+            idx = find_anchor_index("late_afternoon_zazen")
+            if idx is not None: new_ids.insert(idx, reading_id)
         
-        # FRIDAY: Before Evening Chant
         elif day_of_week == "Friday":
-            idx = get_anchor_idx(["evening_chant", "evening-chant"])
-            if idx is not None:
-                new_ids.insert(idx, reading_id)
+            idx = find_anchor_index("evening_chant")
+            if idx is not None: new_ids.insert(idx, reading_id)
         
-        # WEEKEND: After Special Observances
-        else:
-            idx = get_anchor_idx(["special_observances", "special-observances"])
-            if idx is not None:
-                new_ids.insert(idx + 1, reading_id)
+        else: # Weekend
+            idx = find_anchor_index("special_observances")
+            if idx is not None: new_ids.insert(idx + 1, reading_id)
             
     return new_ids
