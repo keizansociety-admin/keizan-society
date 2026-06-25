@@ -1,124 +1,207 @@
 """
-scheduler.py
-============
-A dedicated module for calculating Zen liturgical schedules.
-Updated: Added Rule J for Study/Reading days (1st, 5th, 10th, 15th, 20th, 25th).
+ZEN MISSAL GENERATOR (Version 3.4)
+----------------------------------
+Meticulously debugged for liturgical formatting and GitHub Actions.
+UX FIX: Robust file discovery (handles hyphen/underscore mismatches).
 """
 
-from datetime import datetime
-import calendar
-import pytz
+import os
+import yaml
+import re
+import sys
+import scheduler 
 
-def get_meta(timezone_str: str = "America/New_York") -> dict:
-    """
-    Calculates temporal milestones used for liturgical logic.
-    
-    Returns:
-        dict: Contains day of week, day of month (dom), and boolean flags 
-              for shaving days and month-end observances.
-    """
-    tz = pytz.timezone(timezone_str)
-    now = datetime.now(tz)
-    
-    # Calculate if today is the last day of the current month
-    last_day_of_month = calendar.monthrange(now.year, now.month)[1]
-    is_last_day = (now.day == last_day_of_month)
-    
-    # Rule: Shaving Days (Maintenance Days): Days ending in 4 or 9
-    is_shaving_day = (now.day % 10 == 4) or (now.day % 10 == 9)
-    
-    return {
-        "day_of_week": now.strftime("%A"),
-        "dom": now.day,
-        "month": now.month,
-        "year": now.year,
-        "is_last_day": is_last_day,
-        "is_shaving_day": is_shaving_day,
-        "date_str": now.strftime("%B %d, %Y")
-    }
+# --- SMART CONFIGURATION ---
+if os.getenv('GITHUB_ACTIONS') == 'true':
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    OUTPUT_FILE = os.path.join(BASE_DIR, "index.html")
+else:
+    BASE_DIR = "/Users/jocorsoesquivel/Dropbox/zen_missal"
+    OUTPUT_FILE = os.path.join(BASE_DIR, "output", "index.html")
 
-def get_base_template_name(day_of_week: str) -> str:
-    """
-    Determines which YAML template to load based on the day of the week.
-    """
-    if day_of_week in ["Saturday", "Sunday"]:
-        return "weekend"
-    elif day_of_week == "Friday":
-        return "friday"
-    else:
-        return "weekday"
-    
-def transform_schedule(section_name: str, activity_ids: list, meta: dict) -> list:
-    """
-    Applies liturgical rules to modify the activity list for a specific section.
-    
-    This function handles:
-    - Shaving/Maintenance (4/9)
-    - Memorial Chants (1, 2, 15, 16)
-    - Evening Additions (3, 8, 13, 18, 23, 28, 29)
-    - Study/Reading Days (1, 5, 10, 15, 20, 25)
-    """
-    dom = meta["dom"]
-    month = meta["month"]
-    day_of_week = meta["day_of_week"]
-    is_last_day = meta["is_last_day"]
-    is_shaving_day = meta.get("is_shaving_day", False)
-    
-    # Work on a copy to avoid mutating the original template list
-    new_ids = activity_ids.copy()
+CONTENT_DIR = os.path.join(BASE_DIR, "content", "activities")
+TEMPLATE_DIR = os.path.join(BASE_DIR, "templates")
 
-    # --- RULE I: SHAVING & MAINTENANCE (Days ending in 4 or 9) ---
-    if is_shaving_day and section_name == "EARLY HOURS":
-        if "face_washing_morning" in new_ids:
-            idx = new_ids.index("face_washing_morning")
-            new_ids.insert(idx + 1, "shaving_verse")
-            new_ids.insert(idx + 2, "shower_and_dress")
-        if "dawn_zazen" in new_ids:
-            new_ids.remove("dawn_zazen")
-        chant_variants = ["morning_chant", "morning_chant_health_of_the_earth", "morning_chant_local_spirits"]
-        new_ids = [act for act in new_ids if act not in chant_variants]
+def check_time_gate():
+    if os.getenv('GITHUB_ACTIONS') != 'true':
+        return
 
-    # --- MORNING RULES (D & E: Memorial Chants) ---
-    if dom in [1, 15] and "morning_chant" in new_ids:
-        new_ids[new_ids.index("morning_chant")] = "morning_chant_health_of_the_earth"
-    if dom in [2, 16] and "morning_chant" in new_ids:
-        new_ids[new_ids.index("morning_chant")] = "morning_chant_local_spirits"
+def simple_markdown(text):
+    if not text:
+        return []
+    text = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', text)
+    text = re.sub(r'\*(.*?)\*', r'<i>\1</i>', text)
+    paragraphs = [p.strip() for p in text.split('\n\n') if p.strip()]
+    return paragraphs
 
-    # --- EVENING RULES (F, G, & H: Memorial Additions) ---
-    if "late_afternoon_zazen" in new_ids:
-        idx = new_ids.index("late_afternoon_zazen")
-        if dom in [3, 13, 23]:
-            new_ids.insert(idx, "prayers_for_supporters")
-        if (dom == 29) or (month == 2 and is_last_day):
-            new_ids.insert(idx, "two_ancestors_memorial")
-        if dom in [8, 18, 28]:
-            new_ids.insert(idx, "admonition_of_impermanence")
-
-    # --- RULE J: STUDY & READING (Days ending in 5 or 0, plus the 1st) ---
-    # We map the specific days to their corresponding activity IDs.
-    reading_days = {1: "sutra_reading_01", 5: "sutra_reading_05", 10: "sutra_reading_10", 
-                    15: "sutra_reading_15", 20: "sutra_reading_20", 25: "sutra_reading_25"}
+def assemble():
+    """
+    Loads the template and fetches activity content.
+    UX FIX: Now tries multiple filename variations (hyphens vs underscores)
+    to ensure content is found even if the template and file system differ.
+    """
+    meta = scheduler.get_meta()
+    day_of_week = meta.get("day_of_week", "Monday")
     
-    if dom in reading_days:
-        reading_id = reading_days[dom]
+    template_name = scheduler.get_base_template_name(day_of_week)
+    template_path = os.path.join(TEMPLATE_DIR, f"{template_name}.yaml")
+    
+    if not os.path.exists(template_path):
+        print(f"Error: Template {template_name}.yaml not found.")
+        sys.exit(1)
+
+    with open(template_path, 'r', encoding='utf-8') as f:
+        base_template = yaml.safe_load(f)
         
-        # WEEKDAY LOGIC: Insert before late-afternoon zazen
-        if day_of_week in ["Monday", "Tuesday", "Wednesday", "Thursday"]:
-            if "late_afternoon_zazen" in new_ids:
-                idx = new_ids.index("late_afternoon_zazen")
-                new_ids.insert(idx, reading_id)
+    final_sections = []
+    
+    for section in base_template.get("sections", []):
+        section_name = section.get("period")
+        activity_ids = section.get("activity_ids", [])
         
-        # FRIDAY LOGIC: Insert before evening chant
-        elif day_of_week == "Friday":
-            if "evening_chant" in new_ids:
-                idx = new_ids.index("evening_chant")
-                new_ids.insert(idx, reading_id)
+        transformed_ids = scheduler.transform_schedule(section_name, activity_ids, meta)
         
-        # WEEKEND LOGIC: Insert after special observances
-        else:
-            if "special_observances" in new_ids:
-                idx = new_ids.index("special_observances")
-                # We use idx + 1 to place it AFTER the anchor
-                new_ids.insert(idx + 1, reading_id)
+        activities_content = []
+        for act_id in transformed_ids:
+            # --- ROBUST FILE DISCOVERY ---
+            # We try the ID exactly as written, then try it with underscores.
+            # This allows "late-afternoon" in templates to find "late_afternoon" files.
+            variations = [act_id, act_id.replace("-", "_"), act_id.replace("_", "-")]
             
-    return new_ids
+            target_path = None
+            for var in variations:
+                for ext in [".yaml", ".yml"]:
+                    test_path = os.path.join(CONTENT_DIR, f"{var}{ext}")
+                    if os.path.exists(test_path):
+                        target_path = test_path
+                        break
+                if target_path: break
+            
+            if target_path:
+                with open(target_path, 'r', encoding='utf-8') as act_f:
+                    act_data = yaml.safe_load(act_f)
+                    act_data['body'] = simple_markdown(act_data.get('body', ''))
+                    activities_content.append(act_data)
+            else:
+                # Fallback: Generate a readable title from the ID
+                # We replace underscores with spaces but KEEP hyphens for grammar.
+                clean_title = act_id.replace("_", " ").title()
+                activities_content.append({
+                    "title": clean_title, 
+                    "body": [f"[Missing content file for {act_id}]"]
+                })
+                
+        final_sections.append({
+            "period": section_name,
+            "activities": activities_content
+        })
+        
+    return meta, final_sections
+
+def render(meta, sections):
+    """Generates the final HTML file with CSS styling."""
+    css = """
+    @import url('https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap');
+    body { 
+        font-family: 'Libre Baskerville', serif; 
+        max-width: 7.5in; 
+        margin: 1in auto; 
+        line-height: 1.6; 
+        text-align: justify; 
+        font-size: 11.5pt; 
+        color: #000; 
+    }
+    h1 { 
+        text-align: center; 
+        font-size: 26pt; 
+        border-bottom: 1px solid #000; 
+        padding-bottom: 15px; 
+        margin-bottom: 40px; 
+    }
+    h2 { 
+        text-align: center; 
+        text-transform: uppercase; 
+        letter-spacing: 0.5em; 
+        font-size: 14pt; 
+        margin: 60px 0 30px 0; 
+        font-weight: normal; 
+    }
+    .activity { 
+        margin-bottom: 1.8em; 
+        clear: both; 
+    }
+    .activity p { 
+        text-indent: 2.5em; 
+        margin: 0; 
+        padding: 0; 
+    }
+    .activity-title { 
+        font-weight: bold; 
+        text-transform: uppercase; 
+    }
+    .activity-title::after { 
+        content: ". "; 
+    }
+    .sub-header {
+        font-size: 14pt;
+        display: block;
+        margin-top: 10px;
+    }
+    .shaving-label {
+        font-size: 13pt;
+        font-style: italic;
+        color: #444;
+        display: block;
+        margin-top: 5px;
+    }
+    """
+    
+    html_parts = []
+    html_parts.append("<!DOCTYPE html>")
+    html_parts.append("<html><head><meta charset='utf-8'>")
+    html_parts.append(f"<style>{css}</style>")
+    html_parts.append(f"<title>Householder's Shingi - {meta.get('day_of_week', 'Today')}</title>")
+    html_parts.append("</head><body>")
+    
+    shaving_html = ""
+    if meta.get("is_shaving_day"):
+        shaving_html = f"<span class='shaving-label'>Shaving & Maintenance Day</span>"
+    
+    date_str = f"{meta.get('day_of_week', '')}, {meta.get('date_str', '')}"
+    
+    html_parts.append(f"""
+    <h1>
+        Householder's Shingi<br>
+        <span class='sub-header'>{date_str}</span>
+        {shaving_html}
+    </h1>
+    """)
+    
+    for section in sections:
+        if not section['activities']:
+            continue
+        html_parts.append(f"<h2>{section['period']}</h2>")
+        for act in section['activities']:
+            html_parts.append("<div class='activity'>")
+            paragraphs = act.get('body', [])
+            title_html = f"<span class='activity-title'>{act.get('title', 'Untitled')}</span>"
+            if paragraphs:
+                first_p = paragraphs[0]
+                html_parts.append(f"<p>{title_html}{first_p}</p>")
+                for other_p in paragraphs[1:]:
+                    html_parts.append(f"<p>{other_p}</p>")
+            else:
+                html_parts.append(f"<p>{title_html}</p>")
+            html_parts.append("</div>")
+            
+    html_parts.append("</body></html>")
+    
+    os.makedirs(os.path.dirname(OUTPUT_FILE), exist_ok=True)
+    with open(OUTPUT_FILE, 'w', encoding='utf-8') as out_f:
+        out_f.write("\n".join(html_parts))
+
+if __name__ == "__main__":
+    check_time_gate()
+    metadata, final_sections = assemble()
+    render(metadata, final_sections)
+    print(f"Successfully generated Missal for {metadata.get('day_of_week', 'Today')}")
