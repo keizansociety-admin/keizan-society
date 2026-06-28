@@ -1,8 +1,7 @@
 """
-ZEN MISSAL GENERATOR (Version 3.4)
+ZEN MISSAL GENERATOR (Version 4.0.1)
 ----------------------------------
-Meticulously debugged for liturgical formatting and GitHub Actions.
-UX FIX: Robust file discovery (handles hyphen/underscore mismatches).
+A human-centered tool for generating liturgical schedules.
 """
 
 import os
@@ -11,7 +10,7 @@ import re
 import sys
 import scheduler 
 
-# --- SMART CONFIGURATION ---
+# --- 1. SMART CONFIGURATION ---
 if os.getenv('GITHUB_ACTIONS') == 'true':
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
     OUTPUT_FILE = os.path.join(BASE_DIR, "index.html")
@@ -22,11 +21,8 @@ else:
 CONTENT_DIR = os.path.join(BASE_DIR, "content", "activities")
 TEMPLATE_DIR = os.path.join(BASE_DIR, "templates")
 
-def check_time_gate():
-    if os.getenv('GITHUB_ACTIONS') != 'true':
-        return
-
 def simple_markdown(text):
+    """Converts basic markdown into HTML."""
     if not text:
         return []
     text = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', text)
@@ -34,16 +30,29 @@ def simple_markdown(text):
     paragraphs = [p.strip() for p in text.split('\n\n') if p.strip()]
     return paragraphs
 
-def assemble():
-    """
-    Loads the template and fetches activity content.
-    UX FIX: Now tries multiple filename variations (hyphens vs underscores)
-    to ensure content is found even if the template and file system differ.
-    """
-    meta = scheduler.get_meta()
-    day_of_week = meta.get("day_of_week", "Monday")
+def fetch_activity_data(act_id):
+    """Finds the YAML file for an activity, handling naming variations."""
+    variations = [act_id, act_id.replace("-", "_"), act_id.replace("_", "-")]
     
-    template_name = scheduler.get_base_template_name(day_of_week)
+    for var in variations:
+        for ext in [".yaml", ".yml"]:
+            path = os.path.join(CONTENT_DIR, f"{var}{ext}")
+            if os.path.exists(path):
+                with open(path, 'r', encoding='utf-8') as f:
+                    data = yaml.safe_load(f)
+                    data['body'] = simple_markdown(data.get('body', ''))
+                    return data
+    
+    clean_title = act_id.replace("_", " ").replace("-", " ").title()
+    return {
+        "title": clean_title, 
+        "body": [f"<i>[Missing content file for {act_id}]</i>"]
+    }
+
+def assemble():
+    """Loads the template and runs it through the scheduler pipeline."""
+    meta = scheduler.get_meta()
+    template_name = scheduler.get_base_template_name(meta["day_of_week"])
     template_path = os.path.join(TEMPLATE_DIR, f"{template_name}.yaml")
     
     if not os.path.exists(template_path):
@@ -54,43 +63,13 @@ def assemble():
         base_template = yaml.safe_load(f)
         
     final_sections = []
-    
     for section in base_template.get("sections", []):
-        section_name = section.get("period")
+        section_name = section.get("period", "UNNAMED PERIOD")
         activity_ids = section.get("activity_ids", [])
         
         transformed_ids = scheduler.transform_schedule(section_name, activity_ids, meta)
+        activities_content = [fetch_activity_data(aid) for aid in transformed_ids]
         
-        activities_content = []
-        for act_id in transformed_ids:
-            # --- ROBUST FILE DISCOVERY ---
-            # We try the ID exactly as written, then try it with underscores.
-            # This allows "late-afternoon" in templates to find "late_afternoon" files.
-            variations = [act_id, act_id.replace("-", "_"), act_id.replace("_", "-")]
-            
-            target_path = None
-            for var in variations:
-                for ext in [".yaml", ".yml"]:
-                    test_path = os.path.join(CONTENT_DIR, f"{var}{ext}")
-                    if os.path.exists(test_path):
-                        target_path = test_path
-                        break
-                if target_path: break
-            
-            if target_path:
-                with open(target_path, 'r', encoding='utf-8') as act_f:
-                    act_data = yaml.safe_load(act_f)
-                    act_data['body'] = simple_markdown(act_data.get('body', ''))
-                    activities_content.append(act_data)
-            else:
-                # Fallback: Generate a readable title from the ID
-                # We replace underscores with spaces but KEEP hyphens for grammar.
-                clean_title = act_id.replace("_", " ").title()
-                activities_content.append({
-                    "title": clean_title, 
-                    "body": [f"[Missing content file for {act_id}]"]
-                })
-                
         final_sections.append({
             "period": section_name,
             "activities": activities_content
@@ -160,19 +139,19 @@ def render(meta, sections):
     html_parts.append("<!DOCTYPE html>")
     html_parts.append("<html><head><meta charset='utf-8'>")
     html_parts.append(f"<style>{css}</style>")
-    html_parts.append(f"<title>Householder's Shingi - {meta.get('day_of_week', 'Today')}</title>")
+    html_parts.append(f"<title>Householder's Shingi - {meta.get('date_str')}</title>")
     html_parts.append("</head><body>")
     
     shaving_html = ""
     if meta.get("is_shaving_day"):
         shaving_html = f"<span class='shaving-label'>Shaving & Maintenance Day</span>"
     
-    date_str = f"{meta.get('day_of_week', '')}, {meta.get('date_str', '')}"
+    date_header = f"{meta.get('day_of_week')}, {meta.get('date_str')}"
     
     html_parts.append(f"""
     <h1>
         Householder's Shingi<br>
-        <span class='sub-header'>{date_str}</span>
+        <span class='sub-header'>{date_header}</span>
         {shaving_html}
     </h1>
     """)
@@ -180,11 +159,14 @@ def render(meta, sections):
     for section in sections:
         if not section['activities']:
             continue
+            
         html_parts.append(f"<h2>{section['period']}</h2>")
+        
         for act in section['activities']:
             html_parts.append("<div class='activity'>")
             paragraphs = act.get('body', [])
             title_html = f"<span class='activity-title'>{act.get('title', 'Untitled')}</span>"
+            
             if paragraphs:
                 first_p = paragraphs[0]
                 html_parts.append(f"<p>{title_html}{first_p}</p>")
@@ -201,7 +183,6 @@ def render(meta, sections):
         out_f.write("\n".join(html_parts))
 
 if __name__ == "__main__":
-    check_time_gate()
     metadata, final_sections = assemble()
     render(metadata, final_sections)
-    print(f"Successfully generated Missal for {metadata.get('day_of_week', 'Today')}")
+    print(f"Successfully generated Missal for {metadata.get('date_str')}")
