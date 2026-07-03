@@ -37,7 +37,7 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add index.html
+          git add index.html output/index.html
           # Adding the date to the message ensures the commit is always unique
           git commit -m "Liturgical Update: $(date)" || exit 0
           git push
