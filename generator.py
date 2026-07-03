@@ -12,9 +12,13 @@ import scheduler
 
 # --- 1. SMART CONFIGURATION ---
 if os.getenv('GITHUB_ACTIONS') == 'true':
+    # This finds the folder where this script lives
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-    OUTPUT_FILE = os.path.join(BASE_DIR, "index.html")
+    # We added "output" here so it matches your local setup!
+    # os.path.join safely glues folder names together
+    OUTPUT_FILE = os.path.join(BASE_DIR, "output", "index.html")
 else:
+    # This is your local path for when you run it on your own computer
     BASE_DIR = "/Users/jocorsoesquivel/Dropbox/zen_missal"
     OUTPUT_FILE = os.path.join(BASE_DIR, "output", "index.html")
 
