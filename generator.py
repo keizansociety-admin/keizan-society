@@ -81,8 +81,15 @@ def assemble():
         
     return meta, final_sections
 
-def render(meta, sections):
-    """Generates the final HTML file with CSS styling."""
+def render(meta, sections, target_path):
+    """
+    Takes the processed schedule data and draws the final HTML file.
+    
+    Args:
+        meta (dict): Date and special day info.
+        sections (list): The list of activities for the day.
+        target_path (str): Exactly where to save the finished file.
+    """
     css = """
     @import url('https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap');
     body { 
@@ -182,11 +189,29 @@ def render(meta, sections):
             
     html_parts.append("</body></html>")
     
-    os.makedirs(os.path.dirname(OUTPUT_FILE), exist_ok=True)
-    with open(OUTPUT_FILE, 'w', encoding='utf-8') as out_f:
+    # Ensure the folder exists before we try to save the file
+    os.makedirs(os.path.dirname(target_path), exist_ok=True)
+    
+    # Write the file to the specific path provided to the function
+    with open(target_path, 'w', encoding='utf-8') as out_f:
         out_f.write("\n".join(html_parts))
 
 if __name__ == "__main__":
+    # 1. Prepare the data
     metadata, final_sections = assemble()
-    render(metadata, final_sections)
-    print(f"Successfully generated Missal for {metadata.get('date_str')}")
+    
+    # 2. Determine where we are (GitHub vs Local) to set the base folder
+    if os.getenv('GITHUB_ACTIONS') == 'true':
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+    else:
+        current_dir = "/Users/jocorsoesquivel/Dropbox/zen_missal"
+
+    # 3. Define our two delivery locations
+    path_root = os.path.join(current_dir, "index.html")
+    path_output = os.path.join(current_dir, "output", "index.html")
+    
+    # 4. Run the render function twice!
+    render(metadata, final_sections, path_root)
+    render(metadata, final_sections, path_output)
+    
+    print(f"Successfully generated Missal in both locations for {metadata.get('date_str')}")
