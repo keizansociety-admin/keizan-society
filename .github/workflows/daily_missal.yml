@@ -2,25 +2,24 @@ name: Zen Missal Generator
 
 on:
   schedule:
-    # Focuses runs between roughly 11 PM and 5 AM New York Time.
-    # Uses "off-peak" minutes (07, 22, 47) to avoid GitHub traffic jams.
     - cron: '7,22,47 4-9 * * *'
   push:
     branches:
       - main
   workflow_dispatch: 
 
+# This block gives the runner permission to deploy to GitHub Pages
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: List files for diagnostics
-        run: ls -R
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -33,11 +32,30 @@ jobs:
       - name: Run the Generator
         run: python generator.py
 
+      # This step "packages" your files so the deployer can find them
+      - name: Upload Pages Artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          # This tells GitHub to grab the whole folder
+          path: '.' 
+
+      # We keep this so you can still see the file changes in your repo
       - name: Commit and Push changes
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add index.html output/index.html
-          # Adding the date to the message ensures the commit is always unique
           git commit -m "Liturgical Update: $(date)" || exit 0
           git push
+
+  deploy:
+    # This job only runs after the 'build' job finishes successfully
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
